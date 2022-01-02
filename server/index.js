@@ -2,18 +2,27 @@
 
 const express = require('express');
 const app = express();
-const port = 80;
+const port = 443;
 app.use(express.static('client'));
+
+const fs = require('fs');
+const key = fs.readFileSync('./game.home.key');
+const cert = fs.readFileSync('./game.home.crt');
+
+const https = require('https');
+const serverHttps = https.createServer({key: key, cert: cert }, app);
  
-app.listen(port, () => {
-    console.log(`WebServer listening at http://localhost:${port}`);
+serverHttps.listen(port, () => {
+    console.log(`WebServer listening at https://game.home:${port}`);
 });
 
 // Websocket Server
 
 const WebSocket = require('ws');
 const wsPort = 8080;
-const wss = new WebSocket.Server({ port: wsPort });
+const serverWss = https.createServer({key: key, cert: cert }, app);
+const wss = new WebSocket.Server({ server: serverWss });
+serverWss.listen(wsPort);
 
 const clients = new Map();
 
@@ -52,4 +61,4 @@ wss.on('connection', (ws) => {
 });
 
 
-console.log(`WebSocketServer listening at ws://localhost:${wsPort}`);
+console.log(`WebSocketServer listening at wss://game.home:${wsPort}`);

@@ -62,3 +62,7 @@ typings/
 credentials.json
 token.json
 .vscode/launch.json
+
+*.pem
+*.crt 
+*.key
