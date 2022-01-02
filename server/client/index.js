@@ -25,6 +25,7 @@ if (window.DeviceMotionEvent) {
 }
 
 var orientations = [];
+var currentOrientation = 0;
 
 function handleMotionEvent(event) {
 
@@ -65,53 +66,75 @@ function handleMotionEvent(event) {
         orientation |= 16; // 010000="RIGHT_DOWN ";
     }
 
+    // Add this orientation to the dataset
     orientations.push(orientation);
 
-    if (orientations.length >50 ) {
-        // find the "mode" to filter "shake" events.
-        // https://en.wikipedia.org/wiki/Mode_%28statistics%29
-        var mode=0;
-        var indice=0
-        var persistence=0;
-        var shallowCopy = Array.from(orientations);
-        shallowCopy.sort();
-        shallowCopy.forEach(function(item, index) {
-            if (item != mode) {
-                var length = index - indice;
-                if (length > persistence) {
-                    mode = item;
-                    indice = index;
-                    persistence = length;
-                }
+    // find the "mode" to filter "shake" events.
+    // https://en.wikipedia.org/wiki/Mode_%28statistics%29
+    var mode=0;
+    var start=0;
+    var persistence=0; // Number of occurrences of the mode
+    var previousItem=0;
+    var shallowCopy = Array.from(orientations);
+    // Sort the dataset
+    shallowCopy.sort();
+    shallowCopy.forEach(function(item, index) {
+        if (item != previousItem) {
+            // Change of value
+            // Store the starting index of the new value.
+            start = index;
+        }
+        if (item != mode) {
+            // Maybe a new mode ?
+            // Length of the new mode
+            var length = 1 + index - start;
+            if (length > persistence) {
+                mode = item;
+                persistence = length;
             }
-          });
+        } else {
+            // Increase the number of occurrences of the current mode.
+            persistence++;
+        }
+        previousItem=item;
+    });
 
-        var text = "";
-        if (mode == 0) {
-            test = "UNKOWN";
-        }
-        if ((mode & 3) == 3) {
-            text += "FACE_UP ";
-        }
-        if ((mode & 3) == 1) {
-            text += "FACE_DOWN ";
-        }
-        if ((mode & 12) == 12) {
-            text += "TOP_UP ";
-        } 
-        if ((mode & 12) == 4) {
-            text += "TOP_DOWN ";
-        }
-        if ((mode & 48) == 48) {
-            text += "RIGHT_UP ";
-        } 
-        if ((mode & 48) == 16) {
-            text += "RIGHT_DOWN ";
-        }
+    var text = "";
+    if (mode == 0) {
+        test = "UNKNOWN";
+    }
+    if ((mode & 3) == 1) {
+        text += "FACE_DOWN ";
+    }
+    if ((mode & 3) == 3) {
+        text += "FACE_UP ";
+    }    
+    if ((mode & 12) == 4) {
+        text += "TOP_DOWN ";
+    }    
+    if ((mode & 12) == 12) {
+        text += "TOP_UP ";
+    } 
+    if ((mode & 48) == 16) {
+        text += "RIGHT_DOWN ";
+    }
+    if ((mode & 48) == 48) {
+        text += "RIGHT_UP ";
+    } 
 
-        debug(orientations.length+" "+mode+" "+text);
+    debug(orientations.length+" "+mode+" "+text);
 
-        orientations.pop();
+    // Remove the oldest orientation to keep the dataset at constant length.
+    if (orientations.length > 25) {
+        orientations.shift();
+    }
+
+    if (currentOrientation != mode) {
+        currentOrientation = mode;
+        if (ws != undefined) {
+            const messageBody = { orientation: mode, text: text };
+            ws.send(JSON.stringify(messageBody));
+        }
     }
 };
 
