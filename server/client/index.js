@@ -1,20 +1,99 @@
 
 console.log('Client started.');
 
-const ws = new WebSocket('wss://game.home:8080/ws');
+var clientId='UNKNOWN';
+var currentOrientation = 0;
+
+var myStorage = window.localStorage;
+var storedClientId = myStorage.getItem('leChantier-clientId');
+if (storedClientId != null && storedClientId != undefined) {
+    clientId = storedClientId;
+    console.log('Retrieved stored client id:', clientId);
+}
+
+var wsURL = 'wss://game.home:8080/ws';
+if (window.location.protocol != "https:") {
+    console.log('HTTP Client detected.');
+    wsURL = 'ws://game.home:8081/ws';
+ }
+ var connectInProgress = true;
+var ws = new WebSocket(wsURL);
+
+// Websocket survey loop.
+setInterval(function(){
+    var wsState = 'UNKNOWN_UNDEFINED';
+    if (ws !== undefined) {
+        switch(ws.readyState) {
+            case 0:
+                wsState = 'CONNECTING';
+                break;
+            case 1:
+                wsState = 'OPEN';
+                break;
+            case 2:
+                wsState = 'CLOSING';
+                break;
+            case 3:
+                wsState = 'CLOSED';
+                break;
+            default:
+                wsState = 'UNKNOWN';
+        }
+    }
+    //console.log('webSocket state:',wsState);
+
+    if (wsState === 'CONNECTING' && !connectInProgress) {
+        connectInProgress = true;
+    }
+    if (wsState === 'OPEN' && connectInProgress) {
+        wsConnection();
+    }
+    if (wsState === 'CLOSED' && !connectInProgress) {
+        wsReconnect();
+    }
+}, 1000);
+
 ws.onopen = function() {
-    console.log('Server connected.');
+    wsConnection();
+};
+ws.onclose = function() {
+    console.log('WebServer disconnected.');
+    wsReconnect();
+};
+
+function wsReconnect() {
+    console.log('Retrying to connect to WebServer ', wsURL);
+    connectInProgress = true;
+    ws = new WebSocket(wsURL);
+};
+
+function wsConnection() {
+    console.log('WebServer connected.');
+    connectInProgress = false;
 
     console.log('Send message to server.');
-    const messageBody = { x: 1, y: 2 };
+    const messageBody = { type:'CONNECTION', clientId: clientId };
     ws.send(JSON.stringify(messageBody));
 
     ws.onmessage = function(webSocketMessage) {
         console.log('Received message from server.');
-        const messageBody = JSON.parse(webSocketMessage.data);
-        console.log(messageBody);
+        const message = JSON.parse(webSocketMessage.data);
+        console.log(message);
+
+        if (message.type === 'SET_CLIENT_ID') {
+            clientId = message.clientId;
+            myStorage.setItem('leChantier-clientId', clientId);
+            console.log('Stored client id:',message.clientId);
+            var text = getOrientationText(currentOrientation);
+            const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };
+            ws.send(JSON.stringify(messageBody));
+        } else if (message.type === 'GET_ORIENTATION') {
+            var text = getOrientationText(currentOrientation);
+            const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };
+            ws.send(JSON.stringify(messageBody));
+        }
     };
-};
+}
 
 console.log(window.DeviceMotionEvent);
 if (window.DeviceMotionEvent) {
@@ -25,7 +104,7 @@ if (window.DeviceMotionEvent) {
 }
 
 var orientations = [];
-var currentOrientation = 0;
+
 
 function handleMotionEvent(event) {
 
@@ -75,7 +154,7 @@ function handleMotionEvent(event) {
     var start=0;
     var persistence=0; // Number of occurrences of the mode
     var previousItem=0;
-    var shallowCopy = Array.from(orientations);
+    var shallowCopy = JSON.parse(JSON.stringify(orientations));
     // Sort the dataset
     shallowCopy.sort();
     shallowCopy.forEach(function(item, index) {
@@ -99,28 +178,7 @@ function handleMotionEvent(event) {
         previousItem=item;
     });
 
-    var text = "";
-    if (mode == 0) {
-        test = "UNKNOWN";
-    }
-    if ((mode & 3) == 1) {
-        text += "FACE_DOWN ";
-    }
-    if ((mode & 3) == 3) {
-        text += "FACE_UP ";
-    }    
-    if ((mode & 12) == 4) {
-        text += "TOP_DOWN ";
-    }    
-    if ((mode & 12) == 12) {
-        text += "TOP_UP ";
-    } 
-    if ((mode & 48) == 16) {
-        text += "RIGHT_DOWN ";
-    }
-    if ((mode & 48) == 48) {
-        text += "RIGHT_UP ";
-    } 
+    var text = getOrientationText(mode);
 
     debug(orientations.length+" "+mode+" "+text);
 
@@ -132,7 +190,7 @@ function handleMotionEvent(event) {
     if (currentOrientation != mode) {
         currentOrientation = mode;
         if (ws != undefined) {
-            const messageBody = { orientation: mode, text: text };
+            const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };
             ws.send(JSON.stringify(messageBody));
         }
     }
@@ -146,3 +204,30 @@ function debug(message) {
 function isIE() {
     return navigator.userAgent.toUpperCase().indexOf("TRIDENT/") != -1;
 };
+
+function getOrientationText(orientation) {
+    var text = "";
+    if (orientation == 0) {
+        test = "UNKNOWN";
+    }
+    if ((orientation & 3) == 1) {
+        text += "FACE_DOWN ";
+    }
+    if ((orientation & 3) == 3) {
+        text += "FACE_UP ";
+    }    
+    if ((orientation & 12) == 4) {
+        text += "TOP_DOWN ";
+    }    
+    if ((orientation & 12) == 12) {
+        text += "TOP_UP ";
+    } 
+    if ((orientation & 48) == 16) {
+        text += "RIGHT_DOWN ";
+    }
+    if ((orientation & 48) == 48) {
+        text += "RIGHT_UP ";
+    } 
+
+    return text;
+}
