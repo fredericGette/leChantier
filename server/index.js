@@ -33,16 +33,17 @@ serverWss.listen(portWss);
 
 const wsServer2 = new WebSocket.Server({ port: portWs });
 
-const clientWSs = new Map();
-const clientIDs = new Map();
-let masterClient = undefined;
-
 wsServer1.on('connection', (ws, req)=>{
     wsConnection(ws, req);
 });
 wsServer2.on('connection', (ws, req)=>{
     wsConnection(ws, req);
 });
+
+const clientWSs = new Map();
+const clientIDs = new Map();
+let masterClient = undefined;
+let step = 'WAITING_CLIENTS';
 
 wsConnection = (ws, req) => {
     console.log('Client connected (IP, user agent):', req.socket.remoteAddress, req.headers['user-agent']);
@@ -53,7 +54,10 @@ wsConnection = (ws, req) => {
 
         if (message.type === 'MASTER_CONNECTION') {
             masterClient = createMasterClient(ws);
-
+            notifyStep(step);
+            clientIDs.forEach((client) => {
+                notify('EXISTING_CLIENT', client);
+            })
         } else if (message.type === 'CONNECTION') {
             if (message.clientId==='UNKNOWN') {
                 const client = createClient(uuidv4(), ws);
@@ -64,18 +68,13 @@ wsConnection = (ws, req) => {
                 });
                 ws.send(response);
 
-             } else if (!clientIDs.has(message.clientId) && message.clientId!=='UNKNOWN') {
+             } else {
                 if (clientIDs.has(message.clientId)) {
-                    // reconnect client.
+                    reconnectClient(message.clientId, ws);
                 } else {
                     createClient(message.clientId, ws);
                 }
 
-                const response = JSON.stringify({
-                    type: 'GET_ORIENTATION'
-                });
-                ws.send(response);
-            } else {
                 const response = JSON.stringify({
                     type: 'GET_ORIENTATION'
                 });
@@ -97,43 +96,62 @@ wsConnection = (ws, req) => {
 console.log(`WebSocketServer1 listening at wss://game.home:${portWss}`);
 console.log(`WebSocketServer2 listening at ws://game.home:${portWs}`);
 
+// --------------------------------
+
 createMasterClient = (ws) => {
     const masterClient = {
         ws: ws
     };
     return masterClient;
-}
+};
 
 createClient = (id, ws) => {
     console.log(`Create client ${id}.`);
 
     const client= {
         id: id,
-        team: 1
+        connected: true
     };
     clientIDs.set(client.id, client);
     clientWSs.set(ws, client);
 
-    if (masterClient !== undefined) {
-        const message = JSON.stringify({
-            type: 'CLIENT_CREATED',
-            client: client
-        });
-        masterClient.ws.send(message);
-    }
+    notify('CLIENT_CREATED', client);
 
     return client;
 };
 
 disconnectClient = (ws) => {
-    let client = clientWSs.get(ws);
+    const client = clientWSs.get(ws);
+    client.connected = false;
     console.log(`Client ${client.id} disconnected.`);
     clientWSs.delete(ws);
 
+    notify('CLIENT_DISCONNECTED', client);
+};
+
+reconnectClient = (id, ws) => {
+    const client = clientIDs.get(id);
+    client.connected = true;
+    clientWSs.set(ws, client);
+
+    notify('CLIENT_RECONNECTED', client);
+}
+
+notify = (eventType, client) => {
     if (masterClient !== undefined) {
         const message = JSON.stringify({
-            type: 'CLIENT_DISCONNECTED',
+            type: eventType,
             client: client
+        });
+        masterClient.ws.send(message);
+    }
+};
+
+notifyStep = (step) => {
+    if (masterClient !== undefined) {
+        const message = JSON.stringify({
+            type: 'CURRENT_STEP',
+            step: step
         });
         masterClient.ws.send(message);
     }

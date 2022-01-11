@@ -6,3 +6,11 @@
 #game-container > .team {
     flex: auto;
 }
+
+#waiting-clients > .client.connected {
+    color: black;
+}
+
+#waiting-clients > .client.disconnected {
+    color: lightgray;
+}
