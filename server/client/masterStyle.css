@@ -7,10 +7,10 @@
     flex: auto;
 }
 
-#waiting-clients > .client.connected {
+#waiting-clients > #clients > .client.connected {
     color: black;
 }
 
-#waiting-clients > .client.disconnected {
+#waiting-clients > #clients > .client.disconnected {
     color: lightgray;
 }

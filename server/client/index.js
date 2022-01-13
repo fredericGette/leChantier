@@ -87,6 +87,12 @@ function wsConnection() {
             var text = getOrientationText(currentOrientation);
             const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };
             ws.send(JSON.stringify(messageBody));
+        } else if (message.type === 'SET_CLIENT_NAME') {
+            var element = document.getElementById("name");
+            element.innerText = message.clientName;
+        } else if (message.type === 'SET_CLIENT_TEAM') {
+            var element = document.getElementById("team");
+            element.innerText = message.teamName;
         } else if (message.type === 'GET_ORIENTATION') {
             var text = getOrientationText(currentOrientation);
             const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };
