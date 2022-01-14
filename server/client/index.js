@@ -88,11 +88,22 @@ function wsConnection() {
             const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };
             ws.send(JSON.stringify(messageBody));
         } else if (message.type === 'SET_CLIENT_NAME') {
-            var element = document.getElementById("name");
+            var element = document.getElementById('name');
             element.innerText = message.clientName;
         } else if (message.type === 'SET_CLIENT_TEAM') {
-            var element = document.getElementById("team");
+            var element = document.getElementById('team');
             element.innerText = message.teamName;
+        } else if (message.type === 'SET_CLIENT_PICTURE') {     
+            var img = document.querySelector('.shown');
+            if (img !== undefined && img !== null) {
+                img.classList.remove('shown');   
+                img.classList.add('hidden');
+            }
+            img = document.querySelector('[src="assets/'+message.picture+'"]');
+            if (img !== undefined && img !== null) {
+                img.classList.remove('hidden');   
+                img.classList.add('shown');
+            }
         } else if (message.type === 'GET_ORIENTATION') {
             var text = getOrientationText(currentOrientation);
             const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };

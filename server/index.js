@@ -57,22 +57,17 @@ wsConnection = (ws, req) => {
 
         if (message.type === 'MASTER_CONNECTION') {
             master = createMaster(ws);
-            notifyMasterStep(step);
+            notifyMasterStep(step, level);
             clientIDs.forEach((client) => {
                 notifyMasterClient('EXISTING_CLIENT', client);
-            })
+            });
         } else if (message.type === 'MASTER_UPDATE_TEAM') {
             const client = clientIDs.get(message.clientId);
             client.teamName = message.teamName;
             notifyClientTeam(client);
 
         } else if (message.type === 'MASTER_REQUEST_START_GAME') {
-            step = 'START_LEVEL';
-            level = {
-                id: 1,
-                
-            };
-            notifyMasterStep(step, level);
+            startLevel1();
         } else if (message.type === 'CONNECTION') {
             if (message.clientId==='UNKNOWN') {
                 const client = createClient(uuidv4(), ws);
@@ -132,7 +127,9 @@ createClient = (id, ws) => {
     const client= {
         id: id,
         name: name,
-        connected: true
+        connected: true,
+        teamName: undefined,
+        picture: undefined
     };
     clientIDs.set(client.id, client);
     clientWSs.set(ws, client);
@@ -140,6 +137,7 @@ createClient = (id, ws) => {
 
     notifyMasterClient('CLIENT_CREATED', client);
     notifyClientName(client);
+    notifyClientTeam(client);
 
     return client;
 };
@@ -163,6 +161,7 @@ reconnectClient = (id, ws) => {
     notifyMasterClient('CLIENT_RECONNECTED', client);
     notifyClientName(client);
     notifyClientTeam(client);
+    notifyClientPicture(client);
 }
 
 notifyMasterClient = (eventType, client) => {
@@ -175,7 +174,7 @@ notifyMasterClient = (eventType, client) => {
     }
 };
 
-notifyMasterStep = (step) => {
+notifyMasterStep = (step, level) => {
     if (master !== undefined) {
         const message = JSON.stringify({
             type: 'CURRENT_STEP',
@@ -203,3 +202,32 @@ notifyClientName = (client) => {
     });
     clientWs.send(message);
 };
+
+notifyClientPicture = (client) => {
+    const clientWs = clientIDWSs.get(client.id);
+    const message = JSON.stringify({
+        type: 'SET_CLIENT_PICTURE',
+        picture: client.picture
+    });
+    clientWs.send(message);
+};
+
+startLevel1 = () => {
+    step = 'START_LEVEL';
+
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures = ['image01_RIGHT_DOWN.jpg','image01_RIGHT_UP.jpg','image01_TOP_DOWN.jpg'];
+    const picture = availablePictures[Math.floor(Math.random() * availablePictures.length)];
+
+    level = {
+        id: 1,
+        pictures: Array(nbPictures).fill(picture)
+    };
+
+    clientIDs.forEach((client)=>{
+        client.picture='image01.jpg';
+        notifyClientPicture(client);
+    });
+
+    notifyMasterStep(step, level);
+}

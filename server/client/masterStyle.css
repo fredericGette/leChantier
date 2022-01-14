@@ -1,3 +1,12 @@
+
+#waiting-clients > #clients > .client.connected {
+    color: black;
+}
+
+#waiting-clients > #clients > .client.disconnected {
+    color: lightgray;
+}
+
 #game-container {
     display: flex;
     flex-direction: row;
@@ -7,10 +16,9 @@
     flex: auto;
 }
 
-#waiting-clients > #clients > .client.connected {
-    color: black;
-}
-
-#waiting-clients > #clients > .client.disconnected {
-    color: lightgray;
+#game-container > #model > #pictures > img {
+    height: auto; 
+    width: auto; 
+    max-width: 300px; 
+    max-height: 300px;
 }
