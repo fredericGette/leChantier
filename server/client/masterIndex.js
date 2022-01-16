@@ -56,6 +56,14 @@ ws.onopen = function() {
 updateStep = (newStep) => {
     if (newStep.id === 'WAITING_CLIENTS') {
         displayWaitingClients();
+    } else if (newStep.id === 'WAITING_READY') {
+        displayWaitingReady(newStep.level);
+    } else if (newStep.id === 'WAITING_COUNTDOWN_3') {
+        displayWaitingCountdown(newStep.level, 3);     
+    } else if (newStep.id === 'WAITING_COUNTDOWN_2') {
+        displayWaitingCountdown(newStep.level, 2);    
+    } else if (newStep.id === 'WAITING_COUNTDOWN_1') {
+        displayWaitingCountdown(newStep.level, 1);       
     } else if (newStep.id === 'START_LEVEL') {
         displayLevel(newStep.level);
     }
@@ -65,7 +73,11 @@ updateStep = (newStep) => {
 addClient = (client) => {
     if (step.id === 'WAITING_CLIENTS') {
         addWaitingClient(client);
-    } else if (step.id === 'START_LEVEL') {
+    } else if (step.id === 'WAITING_READY' 
+    || step.id === 'WAITING_COUNTDOWN_3'
+    || step.id === 'WAITING_COUNTDOWN_2'
+    || step.id === 'WAITING_COUNTDOWN_1'
+    || step.id === 'START_LEVEL') {
         addPlayingClient(client);
     }
 };
@@ -73,7 +85,11 @@ addClient = (client) => {
 updateClient = (client) => {
     if (step.id === 'WAITING_CLIENTS') {
         updateWaitingClient(client);
-    } else if (step.id === 'START_LEVEL') {
+    } else if (step.id === 'WAITING_READY' 
+    || step.id === 'WAITING_COUNTDOWN_3'
+    || step.id === 'WAITING_COUNTDOWN_2'
+    || step.id === 'WAITING_COUNTDOWN_1'
+    || step.id === 'START_LEVEL') {
         updatePlayingClient(client);
     }
 };
@@ -85,7 +101,11 @@ removeClient = (client) => {
 };
 
 updateTeam = (team) => {
-    if (step.id === 'START_LEVEL') {
+    if (step.id === 'WAITING_READY' 
+    || step.id === 'WAITING_COUNTDOWN_3'
+    || step.id === 'WAITING_COUNTDOWN_2'
+    || step.id === 'WAITING_COUNTDOWN_1'
+    || step.id === 'START_LEVEL') {
         updatePlayingTeam(team);
     }
 };
@@ -103,6 +123,10 @@ displayWaitingClients = () => {
         </div>
     </div>
     `;
+
+    clientsIDs.forEach((client)=>{
+        addWaitingClient(client);
+    });
 };
 
 addWaitingClient = (client) => {
@@ -148,6 +172,66 @@ updateWaitingClient = (client) => {
     } else {
         clientDiv.classList.remove('connected');
         clientDiv.classList.add('disconnected');
+    }
+};
+
+
+// WAITING_READY
+
+displayWaitingReady = (level) => {
+    document.body.innerHTML=`
+    <div id="game-container">
+        <div id="teams-models">
+            <div class="team" id="RED">
+                <span>Rouges</span>
+                <span class="score"></span>
+                <div class="clients"></div>
+            </div>
+            <div id="models">
+                <span>Niveau</span>
+                <span id="level">${level.id}</span>
+                <div id="text">
+                    <span>Tenez votre</span>
+                    <span>matériel</span>
+                    <span>verticalement</span>
+                    <span>devant vous.</span>
+                </div>
+            </div>
+            <div class="team" id="BLUE">
+                <span>Bleus</span>
+                <span class="score"></span>
+                <div class="clients"></div>
+            </div>
+        </div>
+        <div id="command">
+            <button type="button" onclick="abandonGame();">Abandonner</button>
+        </div>
+    </div>
+    `;
+
+    clientsIDs.forEach((client)=>{
+        addPlayingClient(client);
+    });
+
+    teams.forEach((team)=>{
+        updatePlayingTeam(team);
+    });
+
+};
+
+// WAITING_COUNTDOWN
+
+displayWaitingCountdown = (level, countdown) => {
+    const textDiv = document.getElementById('text');
+    if (textDiv !== undefined && textDiv !== null) {
+        textDiv.remove();
+        const modelsDiv = document.getElementById('models');
+        modelsDiv.insertAdjacentHTML('beforeend', `
+            <div id='countdown'>${countdown}</span>
+        `);
+    } else {
+        const countdownDiv = document.getElementById('countdown');
+        countdownDiv.innerText = countdown;
     }
 };
 
@@ -198,39 +282,14 @@ updatePlayingClient = (client) => {
 };
 
 displayLevel = (level) => {
-    document.body.innerHTML=`
-    <div id="game-container">
-        <div id="teams-models">
-            <div class="team" id="RED">
-                <span>Rouges</span>
-                <span class="score"></span>
-                <div class="clients"></div>
-            </div>
-            <div id="models">
-                <span>Niveau</span>
-                <span id="level">${level.id}</span>
-                <div id="pictures"></div>
-            </div>
-            <div class="team" id="BLUE">
-                <span>Bleus</span>
-                <span class="score"></span>
-                <div class="clients"></div>
-            </div>
-        </div>
-        <div id="command">
-            <button type="button" onclick="abandonGame();>Abandonner</button>
-        </div>
-    </div>
-    
-    `;
-
-    clientsIDs.forEach((client)=>{
-        addPlayingClient(client);
-    });
-
-    teams.forEach((team)=>{
-        updatePlayingTeam(team);
-    });
+    const countdownDiv = document.getElementById('countdown');
+    if (countdownDiv !== undefined && countdownDiv !== null) {
+        countdownDiv.remove();
+        const modelsDiv = document.getElementById('models');
+        modelsDiv.insertAdjacentHTML('beforeend', `
+            <div id="pictures"></div>
+        `);
+    } 
 
     level.pictures.forEach((picture)=>{
         const picturesDiv = document.getElementById('pictures');

@@ -1,1 +1,4 @@
 .vscode/launch.json
+server/db/clients.db
+server/db/step.db
+server/db/teams.db

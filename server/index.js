@@ -102,6 +102,7 @@ wsConnection = (ws, req) => {
             startLevel1();
         } else if (message.type === 'MASTER_REQUEST_ABANDON_GAME') {
             initialStep();
+            notifyMasterStep(step);
             teams.forEach((team) => {
                 team.score = 0;
                 db.teams.update({name:team.name},{$set: { score: team.score }});
@@ -368,7 +369,7 @@ updateOrientation = (client, orientation) => {
     }
     client.pictureRotated = pictureRotated;
 
-    if (step.level !== undefined && step.level.pictures !== undefined) {
+    if (step.id === 'START_LEVEL' && step.level !== undefined && step.level.pictures !== undefined) {
         // Find model pictures of the level that aren't matched by a client of our team yet.
         const modelAvailablePictures = Array.from(step.level.pictures);
         clientIDs.forEach((otherClient) => {
@@ -393,7 +394,7 @@ updateOrientation = (client, orientation) => {
 };
 
 startLevel1 = () => {
-    step.id = 'START_LEVEL';
+    step.id = 'WAITING_READY';
 
     const nbPictures = Math.ceil(clientIDs.size/2);
     const availablePictures = ['image01_RIGHT_DOWN.jpg','image01_RIGHT_UP.jpg','image01_TOP_DOWN.jpg'];
@@ -411,4 +412,32 @@ startLevel1 = () => {
     });
 
     notifyMasterStep(step);
+
+    // Wait for all clients to be in orientation "TOP_UP"
+    const intervalObj = setInterval(()=>{
+        let allStandUp = true;
+        clientIDs.forEach((client)=>{
+            allStandUp &= client.orientation == 12 || client.orientation == 13 || client.orientation == 15;
+        });
+        if (allStandUp) {
+            clearInterval(intervalObj);
+            step.id = 'WAITING_COUNTDOWN_3';
+            notifyMasterStep(step);
+
+            const timeoutObj = setTimeout(()=>{
+                step.id = 'WAITING_COUNTDOWN_2';
+                notifyMasterStep(step);
+
+                const timeoutObj = setTimeout(()=>{
+                    step.id = 'WAITING_COUNTDOWN_1';
+                    notifyMasterStep(step);
+
+                    const timeoutObj = setTimeout(()=>{
+                        step.id = 'START_LEVEL';
+                        notifyMasterStep(step);
+                    }, 1000);
+                }, 1000);
+            }, 1000);
+        }
+    }, 1000);
 };
