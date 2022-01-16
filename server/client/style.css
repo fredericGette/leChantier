@@ -6,3 +6,11 @@ img.picture {
 img.hidden {
     display: none
 }
+
+.teamBlue {
+    border: solid blue;
+}
+
+.teamRed {
+    border: solid red;
+}

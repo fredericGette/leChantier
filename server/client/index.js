@@ -40,7 +40,7 @@ setInterval(function(){
                 wsState = 'UNKNOWN';
         }
     }
-    //console.log('webSocket state:',wsState);
+    console.log('webSocket state:'+wsState+' connectInProgress:'+connectInProgress);
 
     if (wsState === 'CONNECTING' && !connectInProgress) {
         connectInProgress = true;
@@ -49,7 +49,12 @@ setInterval(function(){
         wsConnection();
     }
     if (wsState === 'CLOSED' && !connectInProgress) {
+        // Try again
         wsReconnect();
+    }
+    if (wsState === 'CLOSED' && connectInProgress) {
+        // Reconnect failed
+        connectInProgress = false;
     }
 }, 1000);
 
@@ -93,6 +98,19 @@ function wsConnection() {
         } else if (message.type === 'SET_CLIENT_TEAM') {
             var element = document.getElementById('team');
             element.innerText = message.teamName;
+
+            var divName = document.querySelector('#name');
+            if (message.teamName === 'BLUE') {
+                divName.classList.remove('teamRed');
+                divName.classList.add('teamBlue');
+            } else if (message.teamName === 'RED') {
+                divName.classList.remove('teamBlue');
+                divName.classList.add('teamRed');
+            } else {
+                divName.classList.remove('teamBlue');
+                divName.classList.remove('teamRed');
+            }
+
         } else if (message.type === 'SET_CLIENT_PICTURE') {     
             var img = document.querySelector('.shown');
             if (img !== undefined && img !== null) {
@@ -107,6 +125,9 @@ function wsConnection() {
         } else if (message.type === 'GET_ORIENTATION') {
             var text = getOrientationText(currentOrientation);
             const messageBody = { type: 'ORIENTATION', clientId: clientId, orientation: currentOrientation, text: text };
+            ws.send(JSON.stringify(messageBody));
+        } else if (message.type === 'GET_CONNECTION') {
+            const messageBody = { type:'CONNECTION', clientId: clientId };
             ws.send(JSON.stringify(messageBody));
         }
     };

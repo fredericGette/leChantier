@@ -9,16 +9,36 @@
 
 #game-container {
     display: flex;
+    flex-direction: column;
+}
+
+#game-container > #teams-models {
+    display: flex;
     flex-direction: row;
 }
 
-#game-container > .team {
+#game-container > #teams-models > .team {
     flex: auto;
 }
 
-#game-container > #model > #pictures > img {
+#game-container > #teams-models > #models {
+    flex: auto;
+}
+
+#game-container > #teams-models > #models > #pictures > img {
     height: auto; 
     width: auto; 
     max-width: 300px; 
     max-height: 300px;
+}
+
+#game-container > #teams-models > .team > .clients > .client > img {
+    height: auto; 
+    width: auto; 
+    max-width: 100px; 
+    max-height: 100px;
+}
+
+#game-container > #teams-models > .team > .clients > .client > img.match {
+    border: solid yellow;
 }
