@@ -340,6 +340,11 @@ updateOrientation = (client, orientation) => {
         return;
     }
 
+    if (step.id === 'TEAM_WIN' && client.teamName === step.teamName) {
+        // Winners are frozen.
+        return;
+    }
+
     client.orientation = orientation;
 
     let pictureRotated = undefined;
@@ -369,6 +374,7 @@ updateOrientation = (client, orientation) => {
     }
     client.pictureRotated = pictureRotated;
 
+    let win = false;
     if (step.id === 'START_LEVEL' && step.level !== undefined && step.level.pictures !== undefined) {
         // Find model pictures of the level that aren't matched by a client of our team yet.
         const modelAvailablePictures = Array.from(step.level.pictures);
@@ -385,12 +391,28 @@ updateOrientation = (client, orientation) => {
         // Test if the current client matches one of the available model picture of the level.
         if (modelAvailablePictures.indexOf(client.pictureRotated) > -1) {
             client.pictureMatch = true;
+            if (modelAvailablePictures.length == 1) {
+                win = true;
+            }
         } else {
             client.pictureMatch = false;
         }
     }
 
     notifyMasterClient('CLIENT_ORIENTATION', client);
+
+    if (win) {
+        team = teams.get(client.teamName);
+
+        step.id='TEAM_WIN';
+        step.teamName=team.Name;
+        db.step.update({},{$set: { id: step.id, teamName:step.teamName }});
+        notifyMasterStep(step);
+
+        team.score++;
+        db.teams.update({name:team.name},{$set: { score: team.score }});
+        notifyMasterTeam('SCORE_TEAM', team);
+    }
 };
 
 startLevel1 = () => {

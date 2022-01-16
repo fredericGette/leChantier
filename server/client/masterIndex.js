@@ -29,6 +29,11 @@ ws.onopen = function() {
             const team = message.team;
             teams.set(team.name, team);
             updateTeam(team);
+        } else if (message.type === 'SCORE_TEAM') {
+            debugger;
+            const team = message.team;
+            teams.set(team.name, team);
+            updateTeam(team);
         } else if (message.type === 'CLIENT_CREATED') {
             const client = message.client;
             clientsIDs.set(client.id, client);
