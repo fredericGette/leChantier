@@ -99,7 +99,7 @@ wsConnection = (ws, req) => {
             notifyClientTeam(client);
 
         } else if (message.type === 'MASTER_REQUEST_START_GAME') {
-            startLevel1();
+            startLevel(1);
         } else if (message.type === 'MASTER_REQUEST_ABANDON_GAME') {
             initialStep();
             notifyMasterStep(step);
@@ -347,32 +347,7 @@ updateOrientation = (client, orientation) => {
 
     client.orientation = orientation;
 
-    let pictureRotated = undefined;
-    if (client.picture !== undefined) {
-        let fileExtension = client.picture.substring(client.picture.indexOf('.'));
-        let fileName = client.picture.substring(0, client.picture.length - fileExtension.length);
-  
-        let suffix = '';
-        if ((client.orientation & 12) == 4) {
-            suffix += 'TOP_DOWN ';
-        }    
-        if ((client.orientation & 12) == 12) {
-            suffix += 'TOP_UP ';
-        } 
-        if ((client.orientation & 48) == 16) {
-            suffix += 'RIGHT_DOWN ';
-        }
-        if ((client.orientation & 48) == 48) {
-            suffix += 'RIGHT_UP ';
-        } 
-        suffix = suffix.trim();
-        suffix = suffix.replaceAll(' ','_');
-
-        if (suffix.length > 0) {
-            pictureRotated = fileName+'_'+suffix+fileExtension;
-        }
-    }
-    client.pictureRotated = pictureRotated;
+    client.pictureRotated = getPictureRotated(client);
 
     let win = false;
     if (step.id === 'START_LEVEL' && step.level !== undefined && step.level.pictures !== undefined) {
@@ -412,6 +387,52 @@ updateOrientation = (client, orientation) => {
         team.score++;
         db.teams.update({name:team.name},{$set: { score: team.score }});
         notifyMasterTeam('SCORE_TEAM', team);
+
+        startLevel(step.level.id+1);
+    }
+};
+
+getPictureRotated = (client) => {
+    let pictureRotated = undefined;
+    if (client.picture !== undefined) {
+        let fileExtension = client.picture.substring(client.picture.indexOf('.'));
+        let fileName = client.picture.substring(0, client.picture.length - fileExtension.length);
+  
+        let suffix = '';
+        if ((client.orientation & 12) == 4) {
+            suffix += 'TOP_DOWN ';
+        }    
+        if ((client.orientation & 12) == 12) {
+            suffix += 'TOP_UP ';
+        } 
+        if ((client.orientation & 48) == 16) {
+            suffix += 'RIGHT_DOWN ';
+        }
+        if ((client.orientation & 48) == 48) {
+            suffix += 'RIGHT_UP ';
+        } 
+        suffix = suffix.trim();
+        suffix = suffix.replaceAll(' ','_');
+
+        if (suffix.length > 0) {
+            pictureRotated = fileName+'_'+suffix+fileExtension;
+        }
+    }
+
+    return pictureRotated;
+};
+
+startLevel = (levelId) => {
+
+    switch(levelId) {
+        case 1:
+            startLevel1();
+            break;
+        case 2:
+            startLevel2();
+            break;
+        default:
+            console.log('Unknown level ', levelId);
     }
 };
 
@@ -430,12 +451,41 @@ startLevel1 = () => {
 
     clientIDs.forEach((client)=>{
         client.picture='image01.jpg';
+        client.pictureRotated = getPictureRotated(client);
+        client.pictureMatch=false;
         notifyClientPicture(client);
+        notifyMasterClient('CLIENT_ORIENTATION', client);
     });
 
     notifyMasterStep(step);
 
-    // Wait for all clients to be in orientation "TOP_UP"
+    waitingReady();
+};
+
+startLevel2 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures = ['image02_RIGHT_DOWN.png','image02_RIGHT_UP.png','image02_TOP_DOWN.png'];
+    const picture = availablePictures[Math.floor(Math.random() * availablePictures.length)];
+
+    step.level = {
+        id: 2,
+        pictures: Array(nbPictures).fill(picture)
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    clientIDs.forEach((client)=>{
+        client.picture='image02.png';
+        client.pictureRotated = getPictureRotated(client);
+        client.pictureMatch=false;
+        notifyClientPicture(client);
+        notifyMasterClient('CLIENT_ORIENTATION', client);
+    });
+
+    waitingReady();
+};
+
+// Wait for all clients to be in orientation "TOP_UP"
+waitingReady = () => {
     const intervalObj = setInterval(()=>{
         let allStandUp = true;
         clientIDs.forEach((client)=>{
@@ -446,15 +496,15 @@ startLevel1 = () => {
             step.id = 'WAITING_COUNTDOWN_3';
             notifyMasterStep(step);
 
-            const timeoutObj = setTimeout(()=>{
+            setTimeout(()=>{
                 step.id = 'WAITING_COUNTDOWN_2';
                 notifyMasterStep(step);
 
-                const timeoutObj = setTimeout(()=>{
+                setTimeout(()=>{
                     step.id = 'WAITING_COUNTDOWN_1';
                     notifyMasterStep(step);
 
-                    const timeoutObj = setTimeout(()=>{
+                    setTimeout(()=>{
                         step.id = 'START_LEVEL';
                         notifyMasterStep(step);
                     }, 1000);

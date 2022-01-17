@@ -30,7 +30,7 @@ ws.onopen = function() {
             teams.set(team.name, team);
             updateTeam(team);
         } else if (message.type === 'SCORE_TEAM') {
-            debugger;
+            console.log('score', message);
             const team = message.team;
             teams.set(team.name, team);
             updateTeam(team);
@@ -71,6 +71,8 @@ updateStep = (newStep) => {
         displayWaitingCountdown(newStep.level, 1);       
     } else if (newStep.id === 'START_LEVEL') {
         displayLevel(newStep.level);
+    } else if (newStep.id === 'TEAM_WIN') {
+        displayTeamWin(newStep.teamName, newStep.level);
     }
     step = newStep;
 };
@@ -90,11 +92,7 @@ addClient = (client) => {
 updateClient = (client) => {
     if (step.id === 'WAITING_CLIENTS') {
         updateWaitingClient(client);
-    } else if (step.id === 'WAITING_READY' 
-    || step.id === 'WAITING_COUNTDOWN_3'
-    || step.id === 'WAITING_COUNTDOWN_2'
-    || step.id === 'WAITING_COUNTDOWN_1'
-    || step.id === 'START_LEVEL') {
+    } else if (step.id !== 'WAITING_CLIENTS') {
         updatePlayingClient(client);
     }
 };
@@ -106,11 +104,7 @@ removeClient = (client) => {
 };
 
 updateTeam = (team) => {
-    if (step.id === 'WAITING_READY' 
-    || step.id === 'WAITING_COUNTDOWN_3'
-    || step.id === 'WAITING_COUNTDOWN_2'
-    || step.id === 'WAITING_COUNTDOWN_1'
-    || step.id === 'START_LEVEL') {
+    if (step.id !== 'WAITING_CLIENTS') {
         updatePlayingTeam(team);
     }
 };
@@ -196,10 +190,7 @@ displayWaitingReady = (level) => {
                 <span>Niveau</span>
                 <span id="level">${level.id}</span>
                 <div id="text">
-                    <span>Tenez votre</span>
-                    <span>matériel</span>
-                    <span>verticalement</span>
-                    <span>devant vous.</span>
+                    <span>Tenez votre matériel verticalement devant vous pour continuer.</span>
                 </div>
             </div>
             <div class="team" id="BLUE">
@@ -216,6 +207,7 @@ displayWaitingReady = (level) => {
 
     clientsIDs.forEach((client)=>{
         addPlayingClient(client);
+        updatePlayingClient(client);
     });
 
     teams.forEach((team)=>{
@@ -227,17 +219,26 @@ displayWaitingReady = (level) => {
 // WAITING_COUNTDOWN
 
 displayWaitingCountdown = (level, countdown) => {
+    const picturesDiv = document.getElementById('pictures');
+    if (picturesDiv !== undefined && picturesDiv !== null) {
+        picturesDiv.remove();
+    }
+
     const textDiv = document.getElementById('text');
     if (textDiv !== undefined && textDiv !== null) {
         textDiv.remove();
+    }
+
+    let countdownDiv = document.getElementById('countdown');
+    if (countdownDiv === undefined || countdownDiv === null) {
         const modelsDiv = document.getElementById('models');
         modelsDiv.insertAdjacentHTML('beforeend', `
-            <div id='countdown'>${countdown}</span>
+            <div id='countdown'></span>
         `);
-    } else {
-        const countdownDiv = document.getElementById('countdown');
-        countdownDiv.innerText = countdown;
     }
+
+    countdownDiv = document.getElementById('countdown');
+    countdownDiv.innerText = countdown;
 };
 
 // LEVELS
@@ -258,7 +259,8 @@ addPlayingClient = (client) => {
 updatePlayingTeam = (team) => {
     const teamDiv = document.getElementById(team.name);
     const scoreSpan = teamDiv.querySelector('.score');
-    scoreSpan.innerHTML = team.score;
+    scoreSpan.innerText = team.score;
+    console.log('score', team, scoreSpan.innerText);
 };
 
 updatePlayingClient = (client) => {
@@ -287,14 +289,25 @@ updatePlayingClient = (client) => {
 };
 
 displayLevel = (level) => {
+    const textDiv = document.getElementById('text');
+    if (textDiv !== undefined && textDiv !== null) {
+        textDiv.remove();
+    }
+
     const countdownDiv = document.getElementById('countdown');
     if (countdownDiv !== undefined && countdownDiv !== null) {
         countdownDiv.remove();
-        const modelsDiv = document.getElementById('models');
-        modelsDiv.insertAdjacentHTML('beforeend', `
-            <div id="pictures"></div>
-        `);
-    } 
+    }
+
+    const picturesDiv = document.getElementById('pictures');
+    if (picturesDiv !== undefined && picturesDiv !== null) {
+        picturesDiv.remove();
+    }
+
+    const modelsDiv = document.getElementById('models');
+    modelsDiv.insertAdjacentHTML('beforeend', `
+        <div id="pictures"></div>
+    `); 
 
     level.pictures.forEach((picture)=>{
         const picturesDiv = document.getElementById('pictures');
@@ -307,4 +320,48 @@ displayLevel = (level) => {
 abandonGame = () => {
     const messageBody = { type:'MASTER_REQUEST_ABANDON_GAME'};
     ws.send(JSON.stringify(messageBody));
+};
+
+// TEAM_WIN
+
+displayTeamWin = (teamName, level) => {
+    document.body.innerHTML=`
+    <div id="game-container">
+        <div id="teams-models">
+            <div class="team" id="RED">
+                <span>Rouges</span>
+                <span class="score">${teams.get('RED').score}</span>
+                <div class="clients"></div>
+            </div>
+            <div id="models">
+                <span>Niveau</span>
+                <span id="level">${level.id}</span>
+                <div id="pictures"></div>
+                <div id="text">
+                    <span>Tenez votre matériel verticalement devant vous pour continuer.</span>
+                </div>
+            </div>
+            <div class="team" id="BLUE">
+                <span>Bleus</span>
+                <span class="score">${teams.get('BLUE').score}</span>
+                <div class="clients"></div>
+            </div>
+        </div>
+        <div id="command">
+            <button type="button" onclick="abandonGame();">Abandonner</button>
+        </div>
+    </div>
+    `;
+
+    clientsIDs.forEach((client)=>{
+        addPlayingClient(client);
+        updatePlayingClient(client);
+    });
+
+    level.pictures.forEach((picture)=>{
+        const picturesDiv = document.getElementById('pictures');
+        picturesDiv.insertAdjacentHTML('beforeend', `
+            <img src="assets/${picture}">
+        `);
+    });
 };
