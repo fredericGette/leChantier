@@ -42,3 +42,21 @@
 #game-container > #teams-models > .team > .clients > .client > img.match {
     border: solid yellow;
 }
+
+#finish-screen {
+    display: flex;
+    flex-direction: column;
+}
+
+#finish-screen > #teams-models {
+    display: flex;
+    flex-direction: row;
+}
+
+#finish-screen > #teams-models > .team {
+    flex: auto;
+}
+
+#finish-screen > #teams-models > .team.winner {
+    border: solid yellow;
+}

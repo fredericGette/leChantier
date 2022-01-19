@@ -73,6 +73,8 @@ updateStep = (newStep) => {
         displayLevel(newStep.level);
     } else if (newStep.id === 'TEAM_WIN') {
         displayTeamWin(newStep.teamName, newStep.level);
+    } else if (newStep.id === 'FINISH') {
+        displayFinishScreen(newStep.teamName);
     }
     step = newStep;
 };
@@ -265,12 +267,14 @@ updatePlayingTeam = (team) => {
 
 updatePlayingClient = (client) => {
     const clientDiv = document.getElementById(client.id);
-    if (client.connected) {
-        clientDiv.classList.add('connected');
-        clientDiv.classList.remove('disconnected');
-    } else {
-        clientDiv.classList.remove('connected');
-        clientDiv.classList.add('disconnected');
+    if (clientDiv !== undefined && clientDiv !== null) {
+        if (client.connected) {
+            clientDiv.classList.add('connected');
+            clientDiv.classList.remove('disconnected');
+        } else {
+            clientDiv.classList.remove('connected');
+            clientDiv.classList.add('disconnected');
+        }
     }
 
     let imgSrc = 'assets/unknown.png';
@@ -365,3 +369,40 @@ displayTeamWin = (teamName, level) => {
         `);
     });
 };
+
+displayFinishScreen = (teamNameWinner) => {
+    document.body.innerHTML=`
+    <div id="finish-screen">
+        <div id="teams-models">
+            <div class="team" id="RED">
+                <span>Rouges</span>
+                <span class="score">${teams.get('RED').score}</span>
+                <div class="clients"></div>
+            </div>
+            <div class="team" id="BLUE">
+                <span>Bleus</span>
+                <span class="score">${teams.get('BLUE').score}</span>
+                <div class="clients"></div>
+            </div>
+        </div>
+        <div id="command">
+            <button type="button" onclick="abandonGame();">Recommencer</button>
+        </div>
+    </div>
+    `;
+
+    clientsIDs.forEach((client)=>{
+        if (client.teamName !== undefined) {
+            const teamDiv = document.getElementById(client.teamName);
+            const clientsDiv = teamDiv.querySelector('.clients');
+            clientsDiv.insertAdjacentHTML('beforeend', `
+                <div class="client" id="${client.id}">
+                    <span>${client.name}</span>
+                </div>
+            `);
+        }
+    });
+
+    const teamWinDiv = document.getElementById(teamNameWinner);
+    teamWinDiv.classList.add('winner');
+}

@@ -31,6 +31,7 @@ app.listen(portHttp, () => {
 // Websocket Server
 
 const WebSocket = require('ws');
+const { setMaxListeners } = require('process');
 const portWss = 8080;
 const portWs = 8081;
 const serverWss = https.createServer({key: key, cert: cert }, app);
@@ -340,12 +341,12 @@ updateOrientation = (client, orientation) => {
         return;
     }
 
-    if (step.id === 'TEAM_WIN' && client.teamName === step.teamName) {
+    client.orientation = orientation;
+
+    if ((step.id === 'TEAM_WIN' || step.id === 'WAITING_READY') && client.teamName === step.teamName) {
         // Winners are frozen.
         return;
     }
-
-    client.orientation = orientation;
 
     client.pictureRotated = getPictureRotated(client);
 
@@ -380,8 +381,8 @@ updateOrientation = (client, orientation) => {
         team = teams.get(client.teamName);
 
         step.id='TEAM_WIN';
-        step.teamName=team.Name;
-        db.step.update({},{$set: { id: step.id, teamName:step.teamName }});
+        step.teamName=team.name;
+        db.step.update({},{$set: { id: step.id, teamName: step.teamName }});
         notifyMasterStep(step);
 
         team.score++;
@@ -432,7 +433,7 @@ startLevel = (levelId) => {
             startLevel2();
             break;
         default:
-            console.log('Unknown level ', levelId);
+            finish();
     }
 };
 
@@ -473,19 +474,19 @@ startLevel2 = () => {
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
 
-    clientIDs.forEach((client)=>{
-        client.picture='image02.png';
-        client.pictureRotated = getPictureRotated(client);
-        client.pictureMatch=false;
-        notifyClientPicture(client);
-        notifyMasterClient('CLIENT_ORIENTATION', client);
+    waitingReady(()=>{
+        clientIDs.forEach((client)=>{
+            client.picture='image02.png';
+            client.pictureRotated = getPictureRotated(client);
+            client.pictureMatch=false;
+            notifyClientPicture(client);
+            notifyMasterClient('CLIENT_ORIENTATION', client);
+        });
     });
-
-    waitingReady();
 };
 
 // Wait for all clients to be in orientation "TOP_UP"
-waitingReady = () => {
+waitingReady = (callback) => {
     const intervalObj = setInterval(()=>{
         let allStandUp = true;
         clientIDs.forEach((client)=>{
@@ -493,7 +494,13 @@ waitingReady = () => {
         });
         if (allStandUp) {
             clearInterval(intervalObj);
+
+            if (callback !== undefined) {
+                callback();
+            }
+
             step.id = 'WAITING_COUNTDOWN_3';
+            step.teamName = undefined;
             notifyMasterStep(step);
 
             setTimeout(()=>{
@@ -510,6 +517,30 @@ waitingReady = () => {
                     }, 1000);
                 }, 1000);
             }, 1000);
+        }
+    }, 1000);
+};
+
+finish = () => {
+    const intervalObj = setInterval(()=>{
+        let allStandUp = true;
+        clientIDs.forEach((client)=>{
+            allStandUp &= client.orientation == 12 || client.orientation == 13 || client.orientation == 15;
+        });
+        if (allStandUp) {
+            clearInterval(intervalObj);
+
+            step.id = 'FINISH';
+            let teamWin = undefined;
+            teams.forEach((team)=>{
+                if (teamWin === undefined || team.score > teamWin.score) {
+                    teamWin = team;
+                }
+            });
+            step.teamName = teamWin.name;
+            step.level = undefined;
+            db.step.update({},step);
+            notifyMasterStep(step);
         }
     }, 1000);
 };
