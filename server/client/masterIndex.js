@@ -62,10 +62,15 @@ ws.onopen = function() {
 };
 
 updateStep = (newStep) => {
-    stopwatchs.forEach((stopwatch)=>{
+    stopwatchs.forEach((stopwatch, name)=>{
         clearInterval(stopwatch.interval);
+        const stopwatchElt = document.getElementById(name);
+        if (stopwatchElt !== null) {
+            stopwatchElt.innerText = '';
+        }
     });
     stopwatchs.clear();
+    console.log('Stopwatch: clear all.');
 
     if (newStep.id === 'WAITING_CLIENTS') {
         displayWaitingClients();
@@ -82,7 +87,7 @@ updateStep = (newStep) => {
     } else if (newStep.id === 'TEAM_WIN') {
         displayTeamWin(newStep.teamName, newStep.level);
     } else if (newStep.id === 'FINISH') {
-        displayFinishScreen(newStep.teamName);
+        displayFinishScreen(newStep.winTeamNames);
     }
     step = newStep;
 };
@@ -194,12 +199,16 @@ stopwatchManage = (name, action, startTime) => {
             startTime: startTime,
             interval : interval
         });
+        console.log('Stopwatch start: '+name);
+
     } else if (action === 'CANCEL') {
         const stopwatch = stopwatchs.get(name);
         clearInterval(stopwatch.interval);
+        stopwatchs.delete(name);
         const stopwatchElt = document.getElementById(name);
         stopwatchElt.innerText = '';
-        stopwatchs.delete(name);
+
+        console.log('Stopwatch cancel: '+name);
     }
 };
 
@@ -212,6 +221,7 @@ displayWaitingReady = (level) => {
             <div class="team" id="RED">
                 <span>Rouges</span>
                 <span class="score"></span>
+                <span id="stopwatchRED"></span>
                 <div class="clients"></div>
             </div>
             <div id="models">
@@ -225,6 +235,7 @@ displayWaitingReady = (level) => {
             <div class="team" id="BLUE">
                 <span>Bleus</span>
                 <span class="score"></span>
+                <span id="stopwatchBLUE"></span>
                 <div class="clients"></div>
             </div>
         </div>
@@ -363,6 +374,7 @@ displayTeamWin = (teamName, level) => {
             <div class="team" id="RED">
                 <span>Rouges</span>
                 <span class="score">${teams.get('RED').score}</span>
+                <span id="stopwatchRED"></span>
                 <div class="clients"></div>
             </div>
             <div id="models">
@@ -377,6 +389,7 @@ displayTeamWin = (teamName, level) => {
             <div class="team" id="BLUE">
                 <span>Bleus</span>
                 <span class="score">${teams.get('BLUE').score}</span>
+                <span id="stopwatchBLUE"></span>
                 <div class="clients"></div>
             </div>
         </div>
@@ -399,7 +412,7 @@ displayTeamWin = (teamName, level) => {
     });
 };
 
-displayFinishScreen = (teamNameWinner) => {
+displayFinishScreen = (winTeamNames) => {
     document.body.innerHTML=`
     <div id="finish-screen">
         <div id="teams-models">
@@ -432,6 +445,8 @@ displayFinishScreen = (teamNameWinner) => {
         }
     });
 
-    const teamWinDiv = document.getElementById(teamNameWinner);
-    teamWinDiv.classList.add('winner');
+    winTeamNames.forEach((winTeamName)=>{
+        const teamWinDiv = document.getElementById(winTeamName);
+        teamWinDiv.classList.add('winner');
+    });
 }

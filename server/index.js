@@ -54,7 +54,7 @@ let master = undefined;
 let step = undefined;
 const names = ['Anatole','Berthe','Célestine','Désiré','Eugène','Ferdinand','Gaston','Henri','Irma','John','Kléber','Ludwig','Marcel','Napoléon','Oscar','Peter','Quincy','Romeo','Suzanne','Thérèse','Ursule','Voldemort','Washington','Xena','Yvonne','Zacharias'];
 const teams = new Map();
-let allStandUpStartTime = undefined;
+const stopwatchs = new Map();
 
 // Restore all persisted data
 db.clients.find({}, (err, docs) => {
@@ -110,6 +110,11 @@ wsConnection = (ws, req) => {
                 db.teams.update({name:team.name},{$set: { score: team.score }});
                 notifyMasterTeam('EXISTING_TEAM', team);
             });
+            // clear all timeout
+            stopwatchs.forEach((stopwatch)=>{
+                clearTimeout(teamStopwatch.timeout);
+            });
+            stopwatchs.clear();
         } else if (message.type === 'MASTER_REQUEST_RESET_GAME') {
             clientIDs.forEach((client) => {
                 notifyMasterClient('REMOVE_CLIENT', client);
@@ -363,8 +368,7 @@ updateOrientation = (client, orientation) => {
 
     client.pictureRotated = getPictureRotated(client);
 
-    let win = false;
-    if (step.id === 'START_LEVEL' && step.level !== undefined && step.level.pictures !== undefined) {
+    if ((step.id === 'START_LEVEL' || step.id === 'TEAM_WIN') && step.level !== undefined && step.level.pictures !== undefined) {
         // Find model pictures of the level that aren't matched by a client of our team yet.
         const modelAvailablePictures = Array.from(step.level.pictures);
         clientIDs.forEach((otherClient) => {
@@ -380,30 +384,63 @@ updateOrientation = (client, orientation) => {
         // Test if the current client matches one of the available model picture of the level.
         if (modelAvailablePictures.indexOf(client.pictureRotated) > -1) {
             client.pictureMatch = true;
-            if (modelAvailablePictures.length == 1) {
-                win = true;
+            console.log('picture match ',client.teamName, step.id, modelAvailablePictures.length);
+            if (modelAvailablePictures.length == 1 && step.id === 'START_LEVEL') {
+                // Was the last picture to match
+
+                let teamStopwatch = stopwatchs.get(client.teamName);
+                console.log('teamStopwatch:',teamStopwatch);
+                if (teamStopwatch === undefined) {
+                    // No win timeout in progress
+
+                    const timeout = setTimeout(()=>{
+                        if (step.id !== 'TEAM_WIN') {
+                            // First team to reach the win timeout
+    
+                            // clear all timeout
+                            stopwatchs.forEach((stopwatch)=>{
+                                clearTimeout(teamStopwatch.timeout);
+                            });
+                            stopwatchs.clear();
+
+                            team = teams.get(client.teamName);
+    
+                            step.id='TEAM_WIN';
+                            step.teamName=team.name;
+                            db.step.update({},{$set: { id: step.id, teamName: step.teamName }});
+                            notifyMasterStep(step);
+                    
+                            team.score++;
+                            db.teams.update({name:team.name},{$set: { score: team.score }});
+                            notifyMasterTeam('SCORE_TEAM', team);
+                    
+                            waitingReady(()=>{startLevel(step.level.id+1);});
+                        }
+                    },1000);
+                    teamStopwatch = {
+                        timeout: timeout
+                    };
+                    stopwatchs.set(client.teamName, teamStopwatch);
+                    notifyMasterStopwatch('stopwatch'+client.teamName,'START', Date.now());
+                }
             }
         } else {
+            // Don't match any picture
+
             client.pictureMatch = false;
+            if (step.id === 'START_LEVEL') {
+                const teamStopwatch = stopwatchs.get(client.teamName);
+                if (teamStopwatch !== undefined) {
+                    // Cancel the win timeout of this team
+                    clearTimeout(teamStopwatch.timeout);
+                    notifyMasterStopwatch('stopwatch'+client.teamName,'CANCEL', Date.now());
+                    stopwatchs.delete(client.teamName);
+                }         
+            }   
         }
     }
 
     notifyMasterClient('CLIENT_ORIENTATION', client);
-
-    if (win) {
-        team = teams.get(client.teamName);
-
-        step.id='TEAM_WIN';
-        step.teamName=team.name;
-        db.step.update({},{$set: { id: step.id, teamName: step.teamName }});
-        notifyMasterStep(step);
-
-        team.score++;
-        db.teams.update({name:team.name},{$set: { score: team.score }});
-        notifyMasterTeam('SCORE_TEAM', team);
-
-        startLevel(step.level.id+1);
-    }
 };
 
 getPictureRotated = (client) => {
@@ -491,23 +528,20 @@ startLevel2 = () => {
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
 
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                let picture = pictures[pictureIdx];
 
-    waitingReady(()=>{
-        teams.forEach((team)=>{
-            let pictureIdx = 0;
-            clientIDs.forEach((client)=>{
-                if (client.teamName === team.name) {
-                    let picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
 
-                    client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
-                    client.pictureRotated = getPictureRotated(client);
-                    client.pictureMatch=false;
-                    notifyClientPicture(client);
-                    notifyMasterClient('CLIENT_ORIENTATION', client);
-
-                    if (pictureIdx<pictures.length) pictureIdx++;
-                }
-            });
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
         });
     });
 };
@@ -519,20 +553,28 @@ waitingReady = (callback) => {
         clientIDs.forEach((client)=>{
             allStandUp &= client.orientation == 12 || client.orientation == 13 || client.orientation == 15;
         });
-        if (allStandUp && allStandUpStartTime === undefined) {
-            allStandUpStartTime = Date.now();
-            notifyMasterStopwatch('stopwatchWaitingReady','START',allStandUpStartTime);
+        let allStandUpStopwatch = stopwatchs.get('allStandUp');
+        if (allStandUp && allStandUpStopwatch === undefined) {
+            allStandUpStopwatch = {
+                startTime : Date.now()
+            };
+            stopwatchs.set('allStandUp', allStandUpStopwatch);
+            notifyMasterStopwatch('stopwatchWaitingReady','START',allStandUpStopwatch.startTime);
         }
-        if (!allStandUp && allStandUpStartTime !== undefined) {
-            allStandUpStartTime = undefined;
+        if (!allStandUp && allStandUpStopwatch !== undefined) {
+            stopwatchs.delete('allStandUp');
             notifyMasterStopwatch('stopwatchWaitingReady','CANCEL');
         }
-        if (allStandUp && Date.now()-allStandUpStartTime > 1000) {
+        if (allStandUp && Date.now()-allStandUpStopwatch.startTime > 2000) {
             clearInterval(intervalObj);
-            allStandUpStartTime = undefined;
+            stopwatchs.delete('allStandUp');
 
             if (callback !== undefined) {
                 callback();
+                if (step.id === 'FINISH') {
+                    // No countdown required
+                    return;
+                }
             }
 
             step.id = 'WAITING_COUNTDOWN_3';
@@ -558,34 +600,23 @@ waitingReady = (callback) => {
 };
 
 finish = () => {
-    const intervalObj = setInterval(()=>{
-        let allStandUp = true;
-        clientIDs.forEach((client)=>{
-            allStandUp &= client.orientation == 12 || client.orientation == 13 || client.orientation == 15;
-        });
-        if (allStandUp && allStandUpStartTime === undefined) {
-            allStandUpStartTime = Date.now();
-            notifyMasterStopwatch('stopwatchWaitingReady','START',allStandUpStartTime);
+    step.id = 'FINISH';
+    let winScore = 0;
+    teams.forEach((team)=>{
+        if (team.score > winScore) {
+            winScore = team.score;
         }
-        if (!allStandUp && allStandUpStartTime !== undefined) {
-            allStandUpStartTime = undefined;
-            notifyMasterStopwatch('stopwatchWaitingReady','CANCEL');
+    });
+    let winTeamNames = [];
+    teams.forEach((team)=>{
+        if (team.score === winScore) {
+            winTeamNames.push(team.name);
         }
-        if (allStandUp && Date.now()-allStandUpStartTime > 1000) {
-            clearInterval(intervalObj);
-            allStandUpStartTime = undefined;
+    });
 
-            step.id = 'FINISH';
-            let teamWin = undefined;
-            teams.forEach((team)=>{
-                if (teamWin === undefined || team.score > teamWin.score) {
-                    teamWin = team;
-                }
-            });
-            step.teamName = teamWin.name;
-            step.level = undefined;
-            db.step.update({},step);
-            notifyMasterStep(step);
-        }
-    }, 1000);
+    step.winTeamNames = winTeamNames;
+    step.teamName = undefined;
+    step.level = undefined;
+    db.step.update({},step);
+    notifyMasterStep(step);
 };
