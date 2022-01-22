@@ -7,6 +7,7 @@ let step = {
 };
 const clientsIDs = new Map();
 const teams = new Map();
+const stopwatchs = new Map();
 
 ws.onopen = function() {
     const messageBody = { type:'MASTER_CONNECTION' };
@@ -54,11 +55,18 @@ ws.onopen = function() {
             const client = message.client;
             clientsIDs.delete(client.id);
             removeClient(client);
+        }  else if (message.type === 'STOPWATCH') {
+            stopwatchManage(message.name, message.action, message.startTime);
         } 
     }
 };
 
 updateStep = (newStep) => {
+    stopwatchs.forEach((stopwatch)=>{
+        clearInterval(stopwatch.interval);
+    });
+    stopwatchs.clear();
+
     if (newStep.id === 'WAITING_CLIENTS') {
         displayWaitingClients();
     } else if (newStep.id === 'WAITING_READY') {
@@ -110,7 +118,6 @@ updateTeam = (team) => {
         updatePlayingTeam(team);
     }
 };
-
 
 // WAITING_CLIENTS
 
@@ -176,6 +183,25 @@ updateWaitingClient = (client) => {
     }
 };
 
+stopwatchManage = (name, action, startTime) => {
+    if (action === 'START') {
+        const interval = setInterval(()=>{
+            const stopwatchValue = Date.now() - startTime;
+            const stopwatchElt = document.getElementById(name);
+            stopwatchElt.innerText = stopwatchValue;
+        },100);
+        stopwatchs.set(name, {
+            startTime: startTime,
+            interval : interval
+        });
+    } else if (action === 'CANCEL') {
+        const stopwatch = stopwatchs.get(name);
+        clearInterval(stopwatch.interval);
+        const stopwatchElt = document.getElementById(name);
+        stopwatchElt.innerText = '';
+        stopwatchs.delete(name);
+    }
+};
 
 // WAITING_READY
 
@@ -193,6 +219,7 @@ displayWaitingReady = (level) => {
                 <span id="level">${level.id}</span>
                 <div id="text">
                     <span>Tenez votre matériel verticalement devant vous pour continuer.</span>
+                    <span id="stopwatchWaitingReady"></span>
                 </div>
             </div>
             <div class="team" id="BLUE">
@@ -215,6 +242,7 @@ displayWaitingReady = (level) => {
     teams.forEach((team)=>{
         updatePlayingTeam(team);
     });
+
 
 };
 
@@ -343,6 +371,7 @@ displayTeamWin = (teamName, level) => {
                 <div id="pictures"></div>
                 <div id="text">
                     <span>Tenez votre matériel verticalement devant vous pour continuer.</span>
+                    <span id="stopwatchWaitingReady"></span>
                 </div>
             </div>
             <div class="team" id="BLUE">

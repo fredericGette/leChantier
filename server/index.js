@@ -54,6 +54,7 @@ let master = undefined;
 let step = undefined;
 const names = ['Anatole','Berthe','Célestine','Désiré','Eugène','Ferdinand','Gaston','Henri','Irma','John','Kléber','Ludwig','Marcel','Napoléon','Oscar','Peter','Quincy','Romeo','Suzanne','Thérèse','Ursule','Voldemort','Washington','Xena','Yvonne','Zacharias'];
 const teams = new Map();
+let allStandUpStartTime = undefined;
 
 // Restore all persisted data
 db.clients.find({}, (err, docs) => {
@@ -116,7 +117,7 @@ wsConnection = (ws, req) => {
             clientIDs.clear();
             clientWSs.clear();
             clientIDWSs.clear();
-            db.clients.remove({});
+            db.clients.remove({}, { multi: true });
         } else if (message.type === 'CONNECTION') {
             if (message.clientId==='UNKNOWN') {
                 // First connexion ever
@@ -279,6 +280,18 @@ notifyMasterStep = (step) => {
         const message = JSON.stringify({
             type: 'CURRENT_STEP',
             step: step
+        });
+        master.ws.send(message);
+    }
+};
+
+notifyMasterStopwatch = (stopwatchName, action, startTime) => {
+    if (master !== undefined) {
+        const message = JSON.stringify({
+            type: 'STOPWATCH',
+            name: stopwatchName,
+            action: action,
+            startTime: startTime
         });
         master.ws.send(message);
     }
@@ -465,22 +478,36 @@ startLevel1 = () => {
 
 startLevel2 = () => {
     const nbPictures = Math.ceil(clientIDs.size/2);
-    const availablePictures = ['image02_RIGHT_DOWN.png','image02_RIGHT_UP.png','image02_TOP_DOWN.png'];
-    const picture = availablePictures[Math.floor(Math.random() * availablePictures.length)];
+    const availablePictures01 = ['image01_RIGHT_DOWN.jpg','image01_RIGHT_UP.jpg','image01_TOP_DOWN.jpg'];
+    const picture01 = availablePictures01[Math.floor(Math.random() * availablePictures01.length)];
+    const availablePictures02 = ['image02_RIGHT_DOWN.png','image02_RIGHT_UP.png','image02_TOP_DOWN.png'];
+    const picture02 = availablePictures02[Math.floor(Math.random() * availablePictures02.length)];
+    const pictures = Array(nbPictures).fill(picture01);
+    pictures[Math.floor(Math.random() * pictures.length)]=picture02;
 
     step.level = {
         id: 2,
-        pictures: Array(nbPictures).fill(picture)
+        pictures: pictures
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
 
+
     waitingReady(()=>{
-        clientIDs.forEach((client)=>{
-            client.picture='image02.png';
-            client.pictureRotated = getPictureRotated(client);
-            client.pictureMatch=false;
-            notifyClientPicture(client);
-            notifyMasterClient('CLIENT_ORIENTATION', client);
+        teams.forEach((team)=>{
+            let pictureIdx = 0;
+            clientIDs.forEach((client)=>{
+                if (client.teamName === team.name) {
+                    let picture = pictures[pictureIdx];
+
+                    client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                    client.pictureRotated = getPictureRotated(client);
+                    client.pictureMatch=false;
+                    notifyClientPicture(client);
+                    notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                    if (pictureIdx<pictures.length) pictureIdx++;
+                }
+            });
         });
     });
 };
@@ -492,8 +519,17 @@ waitingReady = (callback) => {
         clientIDs.forEach((client)=>{
             allStandUp &= client.orientation == 12 || client.orientation == 13 || client.orientation == 15;
         });
-        if (allStandUp) {
+        if (allStandUp && allStandUpStartTime === undefined) {
+            allStandUpStartTime = Date.now();
+            notifyMasterStopwatch('stopwatchWaitingReady','START',allStandUpStartTime);
+        }
+        if (!allStandUp && allStandUpStartTime !== undefined) {
+            allStandUpStartTime = undefined;
+            notifyMasterStopwatch('stopwatchWaitingReady','CANCEL');
+        }
+        if (allStandUp && Date.now()-allStandUpStartTime > 1000) {
             clearInterval(intervalObj);
+            allStandUpStartTime = undefined;
 
             if (callback !== undefined) {
                 callback();
@@ -518,7 +554,7 @@ waitingReady = (callback) => {
                 }, 1000);
             }, 1000);
         }
-    }, 1000);
+    }, 500);
 };
 
 finish = () => {
@@ -527,8 +563,17 @@ finish = () => {
         clientIDs.forEach((client)=>{
             allStandUp &= client.orientation == 12 || client.orientation == 13 || client.orientation == 15;
         });
-        if (allStandUp) {
+        if (allStandUp && allStandUpStartTime === undefined) {
+            allStandUpStartTime = Date.now();
+            notifyMasterStopwatch('stopwatchWaitingReady','START',allStandUpStartTime);
+        }
+        if (!allStandUp && allStandUpStartTime !== undefined) {
+            allStandUpStartTime = undefined;
+            notifyMasterStopwatch('stopwatchWaitingReady','CANCEL');
+        }
+        if (allStandUp && Date.now()-allStandUpStartTime > 1000) {
             clearInterval(intervalObj);
+            allStandUpStartTime = undefined;
 
             step.id = 'FINISH';
             let teamWin = undefined;
