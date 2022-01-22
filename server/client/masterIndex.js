@@ -280,6 +280,11 @@ displayWaitingCountdown = (level, countdown) => {
 
     countdownDiv = document.getElementById('countdown');
     countdownDiv.innerText = countdown;
+
+    const levelElt = document.getElementById('level');
+    if (levelElt !== null) {
+        levelElt.innerText = level.id;
+    }
 };
 
 // LEVELS
@@ -287,21 +292,24 @@ displayWaitingCountdown = (level, countdown) => {
 addPlayingClient = (client) => {
     if (client.teamName !== undefined) {
         const teamDiv = document.getElementById(client.teamName);
-        const clientsDiv = teamDiv.querySelector('.clients');
-        clientsDiv.insertAdjacentHTML('beforeend', `
-            <div class="client ${client.connected?'connected':'disconnected'}" id="${client.id}">
-                <span>${client.name}</span>
-                <img src="assets/unknown.png">
-            </div>
-        `);
+        if (teamDiv != null) {
+            const clientsDiv = teamDiv.querySelector('.clients');
+            clientsDiv.insertAdjacentHTML('beforeend', `
+                <div class="client ${client.connected?'connected':'disconnected'}" id="${client.id}">
+                    <span>${client.name}</span>
+                    <img src="assets/unknown.png">
+                </div>
+            `);
+        }
     }
 };
 
 updatePlayingTeam = (team) => {
     const teamDiv = document.getElementById(team.name);
-    const scoreSpan = teamDiv.querySelector('.score');
-    scoreSpan.innerText = team.score;
-    console.log('score', team, scoreSpan.innerText);
+    if (teamDiv !== null) {
+        const scoreSpan = teamDiv.querySelector('.score');
+        scoreSpan.innerText = team.score;
+    }
 };
 
 updatePlayingClient = (client) => {
@@ -342,22 +350,39 @@ displayLevel = (level) => {
         countdownDiv.remove();
     }
 
-    const picturesDiv = document.getElementById('pictures');
+    let picturesDiv = document.getElementById('pictures');
     if (picturesDiv !== undefined && picturesDiv !== null) {
         picturesDiv.remove();
     }
 
     const modelsDiv = document.getElementById('models');
-    modelsDiv.insertAdjacentHTML('beforeend', `
-        <div id="pictures"></div>
-    `); 
-
-    level.pictures.forEach((picture)=>{
-        const picturesDiv = document.getElementById('pictures');
-        picturesDiv.insertAdjacentHTML('beforeend', `
-            <img src="assets/${picture}">
+    if (modelsDiv != null) {
+        modelsDiv.insertAdjacentHTML('beforeend', `
+            <div id="pictures"></div>
         `);
-    });
+    }
+
+    picturesDiv = document.getElementById('pictures');
+    if (picturesDiv !== null) {
+        level.pictures.forEach((picture)=>{
+            picturesDiv.insertAdjacentHTML('beforeend', `
+                <img src="assets/${picture}">
+            `);
+        });
+    }
+
+    const levelElt = document.getElementById('level');
+    if (levelElt !== null) {
+        levelElt.innerText = level.id;
+    }
+
+    // In case of issue
+    const commandDiv = document.getElementById('command');
+    if (commandDiv === null) {
+        document.body.innerHTML=`
+            <button type="button" onclick="abandonGame();">Abandonner</button>
+        `;
+    }
 };
 
 abandonGame = () => {
@@ -373,7 +398,7 @@ displayTeamWin = (teamName, level) => {
         <div id="teams-models">
             <div class="team" id="RED">
                 <span>Rouges</span>
-                <span class="score">${teams.get('RED').score}</span>
+                <span class="score"></span>
                 <span id="stopwatchRED"></span>
                 <div class="clients"></div>
             </div>
@@ -388,7 +413,7 @@ displayTeamWin = (teamName, level) => {
             </div>
             <div class="team" id="BLUE">
                 <span>Bleus</span>
-                <span class="score">${teams.get('BLUE').score}</span>
+                <span class="score"></span>
                 <span id="stopwatchBLUE"></span>
                 <div class="clients"></div>
             </div>
@@ -409,6 +434,10 @@ displayTeamWin = (teamName, level) => {
         picturesDiv.insertAdjacentHTML('beforeend', `
             <img src="assets/${picture}">
         `);
+    });
+
+    teams.forEach((team)=>{
+        updatePlayingTeam(team);
     });
 };
 

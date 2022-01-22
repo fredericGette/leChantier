@@ -473,79 +473,6 @@ getPictureRotated = (client) => {
     return pictureRotated;
 };
 
-startLevel = (levelId) => {
-
-    switch(levelId) {
-        case 1:
-            startLevel1();
-            break;
-        case 2:
-            startLevel2();
-            break;
-        default:
-            finish();
-    }
-};
-
-startLevel1 = () => {
-    step.id = 'WAITING_READY';
-
-    const nbPictures = Math.ceil(clientIDs.size/2);
-    const availablePictures = ['image01_RIGHT_DOWN.jpg','image01_RIGHT_UP.jpg','image01_TOP_DOWN.jpg'];
-    const picture = availablePictures[Math.floor(Math.random() * availablePictures.length)];
-
-    step.level = {
-        id: 1,
-        pictures: Array(nbPictures).fill(picture)
-    };
-    db.step.update({},{$set: { id: step.id, level: step.level }});
-
-    clientIDs.forEach((client)=>{
-        client.picture='image01.jpg';
-        client.pictureRotated = getPictureRotated(client);
-        client.pictureMatch=false;
-        notifyClientPicture(client);
-        notifyMasterClient('CLIENT_ORIENTATION', client);
-    });
-
-    notifyMasterStep(step);
-
-    waitingReady();
-};
-
-startLevel2 = () => {
-    const nbPictures = Math.ceil(clientIDs.size/2);
-    const availablePictures01 = ['image01_RIGHT_DOWN.jpg','image01_RIGHT_UP.jpg','image01_TOP_DOWN.jpg'];
-    const picture01 = availablePictures01[Math.floor(Math.random() * availablePictures01.length)];
-    const availablePictures02 = ['image02_RIGHT_DOWN.png','image02_RIGHT_UP.png','image02_TOP_DOWN.png'];
-    const picture02 = availablePictures02[Math.floor(Math.random() * availablePictures02.length)];
-    const pictures = Array(nbPictures).fill(picture01);
-    pictures[Math.floor(Math.random() * pictures.length)]=picture02;
-
-    step.level = {
-        id: 2,
-        pictures: pictures
-    };
-    db.step.update({},{$set: { id: step.id, level: step.level }});
-
-    teams.forEach((team)=>{
-        let pictureIdx = 0;
-        clientIDs.forEach((client)=>{
-            if (client.teamName === team.name) {
-                let picture = pictures[pictureIdx];
-
-                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
-                client.pictureRotated = getPictureRotated(client);
-                client.pictureMatch=false;
-                notifyClientPicture(client);
-                notifyMasterClient('CLIENT_ORIENTATION', client);
-
-                if (pictureIdx<pictures.length) pictureIdx++;
-            }
-        });
-    });
-};
-
 // Wait for all clients to be in orientation "TOP_UP"
 waitingReady = (callback) => {
     const intervalObj = setInterval(()=>{
@@ -597,6 +524,212 @@ waitingReady = (callback) => {
             }, 1000);
         }
     }, 500);
+};
+
+startLevel = (levelId) => {
+
+    switch(levelId) {
+        case 1:
+            startLevel1();
+            break;
+        case 2:
+            startLevel2();
+            break;
+        case 3:
+            startLevel3();
+            break;      
+        case 4:
+            startLevel4();
+            break;     
+        case 5:
+            startLevel5();
+            break;                              
+        default:
+            finish();
+    }
+};
+
+startLevel1 = () => {
+    step.id = 'WAITING_READY';
+
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures = ['image01_RIGHT_DOWN.png','image01_RIGHT_UP.png','image01_TOP_DOWN.png'];
+    const picture = availablePictures[Math.floor(Math.random() * availablePictures.length)];
+
+    step.level = {
+        id: 1,
+        pictures: Array(nbPictures).fill(picture)
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    clientIDs.forEach((client)=>{
+        client.picture='image01.png';
+        client.pictureRotated = getPictureRotated(client);
+        client.pictureMatch=false;
+        notifyClientPicture(client);
+        notifyMasterClient('CLIENT_ORIENTATION', client);
+    });
+
+    notifyMasterStep(step);
+
+    waitingReady();
+};
+
+startLevel2 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures01 = ['image01_RIGHT_DOWN.png','image01_RIGHT_UP.png','image01_TOP_DOWN.png'];
+    const picture01 = availablePictures01[Math.floor(Math.random() * availablePictures01.length)];
+    const availablePictures02 = ['image02_RIGHT_DOWN.png','image02_RIGHT_UP.png','image02_TOP_DOWN.png'];
+    const picture02 = availablePictures02[Math.floor(Math.random() * availablePictures02.length)];
+    const pictures = Array(nbPictures).fill(picture01);
+    pictures[Math.floor(Math.random() * pictures.length)]=picture02;
+
+    step.level = {
+        id: 2,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
+};
+
+startLevel3 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures = [];
+    for (let i=1; i<=nbPictures; i++) {
+        availablePictures.push('image'+(i).toLocaleString(undefined, {minimumIntegerDigits: 2}));
+    }
+
+    // Shuffle pictures
+    // https://stackoverflow.com/a/2450976
+    let currentIndex = availablePictures.length,  randomIndex;
+    // While there remain elements to shuffle...
+    while (currentIndex != 0) {
+        // Pick a remaining element...
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        // And swap it with the current element.
+        [availablePictures[currentIndex], availablePictures[randomIndex]] = [
+            availablePictures[randomIndex], availablePictures[currentIndex]];
+    }
+
+    const orientations = ['_RIGHT_DOWN.png','_RIGHT_UP.png','_TOP_DOWN.png'];
+    const pictures = [];
+    availablePictures.forEach((picture)=>{
+        const orientation = orientations[Math.floor(Math.random() * orientations.length)];
+        pictures.push(picture+orientation);
+    });
+
+    step.level = {
+        id: 3,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
+};
+
+startLevel4 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+
+    const availableOrientations = ['_RIGHT_DOWN.png','_RIGHT_UP.png','_TOP_DOWN.png'];
+    const orientation1 = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
+    availableOrientations.splice(availableOrientations.indexOf(orientation1), 1);
+
+    const pictures = [];
+    for (let i=0; i<nbPictures; i++) {
+        pictures.push('image01'+orientation1);
+    }
+
+    const orientation2 = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
+    pictures[Math.floor(Math.random() * pictures.length)] = 'image01'+orientation2;
+
+    step.level = {
+        id: 4,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
+};
+
+startLevel5 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+
+    let availableOrientations = []; 
+    const pictures = [];
+    for (let i=0; i<nbPictures; i++) {
+        if (availableOrientations.length === 0) {
+            availableOrientations = ['_RIGHT_DOWN.png','_RIGHT_UP.png','_TOP_DOWN.png'];
+        }
+        const orientation = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
+        availableOrientations.splice(availableOrientations.indexOf(orientation), 1);
+        pictures.push('image01'+orientation);
+    }
+
+    step.level = {
+        id: 5,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
 };
 
 finish = () => {
