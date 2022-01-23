@@ -1,3 +1,38 @@
+body {
+    background-color: #a7a7a7;
+    background-image: url("assets/background.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    height: 95vh;
+    background-size: 120vh;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    margin: 0;
+}
+
+#title-screen {
+    background-color: white;
+    background-image: url("assets/titleScreen.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    height: 100%;
+    width: 100%;
+    background-size: 120vh;
+}
+
+#waiting-clients {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 95vh;
+}
+
+#waiting-clients > #clients {
+    font-size: 5vh;
+    font-weight: bold;
+}
 
 #waiting-clients > #clients > .client.connected {
     color: black;
@@ -60,3 +95,4 @@
 #finish-screen > #teams-models > .team.winner {
     border: solid yellow;
 }
+
