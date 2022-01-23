@@ -96,10 +96,10 @@ function wsConnection() {
             var element = document.getElementById('name');
             element.innerText = message.clientName;
         } else if (message.type === 'SET_CLIENT_TEAM') {
-            var element = document.getElementById('team');
-            element.innerText = message.teamName;
+            //var element = document.getElementById('team');
+            //element.innerText = message.teamName;
 
-            var divName = document.querySelector('#name');
+            var divName = document.querySelector('#header');
             if (message.teamName === 'BLUE') {
                 divName.classList.remove('teamRed');
                 divName.classList.add('teamBlue');
@@ -141,8 +141,18 @@ if (window.DeviceMotionEvent) {
     console.log("DeviceMotionEvent NOK.");
 }
 
-var orientations = [];
+function openFullscreen() {
+    var elem = document.documentElement;
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+        elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE11 */
+        elem.msRequestFullscreen();
+    }
+};
 
+var orientations = [];
 
 function handleMotionEvent(event) {
 
@@ -235,8 +245,8 @@ function handleMotionEvent(event) {
 };
 
 function debug(message) {
-    var element = document.getElementById("orientation");
-    element.innerText = message;
+    //var element = document.getElementById("orientation");
+    //element.innerText = message;
 };
 
 function isIE() {

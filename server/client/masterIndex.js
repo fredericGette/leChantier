@@ -447,12 +447,12 @@ displayFinishScreen = (winTeamNames) => {
         <div id="teams-models">
             <div class="team" id="RED">
                 <span>Rouges</span>
-                <span class="score">${teams.get('RED').score}</span>
+                <span class="score"></span>
                 <div class="clients"></div>
             </div>
             <div class="team" id="BLUE">
                 <span>Bleus</span>
-                <span class="score">${teams.get('BLUE').score}</span>
+                <span class="score"></span>
                 <div class="clients"></div>
             </div>
         </div>
@@ -477,5 +477,9 @@ displayFinishScreen = (winTeamNames) => {
     winTeamNames.forEach((winTeamName)=>{
         const teamWinDiv = document.getElementById(winTeamName);
         teamWinDiv.classList.add('winner');
+    });
+
+    teams.forEach((team)=>{
+        updatePlayingTeam(team);
     });
 }
