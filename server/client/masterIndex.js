@@ -32,7 +32,6 @@ start = () => {
                 teams.set(team.name, team);
                 updateTeam(team);
             } else if (message.type === 'SCORE_TEAM') {
-                console.log('score', message);
                 const team = message.team;
                 teams.set(team.name, team);
                 updateTeam(team);
@@ -67,7 +66,8 @@ start = () => {
             clearInterval(stopwatch.interval);
             const stopwatchElt = document.getElementById(name);
             if (stopwatchElt !== null) {
-                stopwatchElt.innerText = '';
+                stopwatchElt.value = 0;
+                stopwatchElt.hidden = true;
             }
         });
         stopwatchs.clear();
@@ -148,9 +148,20 @@ start = () => {
         mainDiv.insertAdjacentHTML('beforeend', `
         <div class="client ${client.connected?'connected':'disconnected'}" id="${client.id}">
             <span>${client.name}</span>
-            <input type="radio" name="${client.id}Team" ${client.teamName === 'RED' ? 'checked':''} value="RED" onclick="teamClick('${client.id}', this.value);">
-            <input type="radio" name="${client.id}Team" ${client.teamName === undefined ? 'checked':''} value="undefined" disabled>
-            <input type="radio" name="${client.id}Team" ${client.teamName === 'BLUE' ? 'checked':''} value="BLUE" onclick="teamClick('${client.id}', this.value);">
+            <div class="team-radio">
+                <label class="radio-container">
+                    <input type="radio" name="${client.id}Team" ${client.teamName === 'RED' ? 'checked':''} value="RED" onclick="teamClick('${client.id}', this.value);">
+                    <span class="checkmark red"></span>
+                </label>
+                <label class="radio-container">
+                    <input type="radio" name="${client.id}Team" ${client.teamName === undefined ? 'checked':''} value="undefined" disabled>
+                    <span class="checkmark"></span>
+                </label>
+                <label class="radio-container">
+                    <input type="radio" name="${client.id}Team" ${client.teamName === 'BLUE' ? 'checked':''} value="BLUE" onclick="teamClick('${client.id}', this.value);">
+                    <span class="checkmark blue"></span>
+                </label>
+            </div>
         </div>
         `);
     };
@@ -194,7 +205,8 @@ start = () => {
             const interval = setInterval(()=>{
                 const stopwatchValue = Date.now() - startTime;
                 const stopwatchElt = document.getElementById(name);
-                stopwatchElt.innerText = stopwatchValue;
+                stopwatchElt.value = stopwatchValue;
+                stopwatchElt.hidden = false;
             },100);
             stopwatchs.set(name, {
                 startTime: startTime,
@@ -207,7 +219,8 @@ start = () => {
             clearInterval(stopwatch.interval);
             stopwatchs.delete(name);
             const stopwatchElt = document.getElementById(name);
-            stopwatchElt.innerText = '';
+            stopwatchElt.value = 0;
+            stopwatchElt.hidden = true;
     
             console.log('Stopwatch cancel: '+name);
         }
@@ -220,23 +233,23 @@ start = () => {
         <div id="game-container">
             <div id="teams-models">
                 <div class="team" id="RED">
-                    <span>Rouges</span>
-                    <span class="score"></span>
-                    <span id="stopwatchRED"></span>
+                    <div class="score"></div>
+                    <progress id="stopwatchRED" max="1000" value="0" hidden></progress>
                     <div class="clients"></div>
                 </div>
                 <div id="models">
-                    <span>Niveau</span>
-                    <span id="level">${level.id}</span>
-                    <div id="text">
-                        <span>Tenez votre matériel verticalement devant vous pour continuer.</span>
-                        <span id="stopwatchWaitingReady"></span>
+                    <div id="level-text">
+                        Niveau
+                        <span id="level">${level.id}</span>
+                    </div>
+                    <div id="waiting-text">
+                        Tenez votre matériel verticalement devant vous pour continuer.
+                        <progress id="stopwatchWaitingReady" max="2000" value="0" hidden></progress>
                     </div>
                 </div>
                 <div class="team" id="BLUE">
-                    <span>Bleus</span>
-                    <span class="score"></span>
-                    <span id="stopwatchBLUE"></span>
+                    <div class="score"></div>
+                    <progress id="stopwatchBLUE" max="1000" value="0" hidden></progress>
                     <div class="clients"></div>
                 </div>
             </div>
@@ -266,7 +279,7 @@ start = () => {
             picturesDiv.remove();
         }
     
-        const textDiv = document.getElementById('text');
+        const textDiv = document.getElementById('waiting-text');
         if (textDiv !== undefined && textDiv !== null) {
             textDiv.remove();
         }
@@ -308,8 +321,8 @@ start = () => {
     updatePlayingTeam = (team) => {
         const teamDiv = document.getElementById(team.name);
         if (teamDiv !== null) {
-            const scoreSpan = teamDiv.querySelector('.score');
-            scoreSpan.innerText = team.score;
+            const scoreElt = teamDiv.querySelector('.score');
+            scoreElt.innerText = team.score;
         }
     };
     
@@ -341,7 +354,7 @@ start = () => {
     };
     
     displayLevel = (level) => {
-        const textDiv = document.getElementById('text');
+        const textDiv = document.getElementById('waiting-text');
         if (textDiv !== undefined && textDiv !== null) {
             textDiv.remove();
         }
@@ -398,24 +411,24 @@ start = () => {
         <div id="game-container">
             <div id="teams-models">
                 <div class="team" id="RED">
-                    <span>Rouges</span>
-                    <span class="score"></span>
-                    <span id="stopwatchRED"></span>
+                    <div class="score"></div>
+                    <progress id="stopwatchRED" max="1000" value="0" hidden></progress>
                     <div class="clients"></div>
                 </div>
                 <div id="models">
-                    <span>Niveau</span>
-                    <span id="level">${level.id}</span>
+                    <div id="level-text">
+                        Niveau
+                        <span id="level">${level.id}</span>
+                    </div>
                     <div id="pictures"></div>
-                    <div id="text">
-                        <span>Tenez votre matériel verticalement devant vous pour continuer.</span>
-                        <span id="stopwatchWaitingReady"></span>
+                    <div id="waiting-text" class="small">
+                        Tenez votre matériel verticalement devant vous pour continuer.
+                        <progress id="stopwatchWaitingReady" max="2000" value="0" hidden></progress>
                     </div>
                 </div>
                 <div class="team" id="BLUE">
-                    <span>Bleus</span>
-                    <span class="score"></span>
-                    <span id="stopwatchBLUE"></span>
+                    <div class="score"></div>
+                    <progress id="stopwatchBLUE" max="1000" value="0" hidden></progress>
                     <div class="clients"></div>
                 </div>
             </div>
@@ -447,13 +460,11 @@ start = () => {
         <div id="finish-screen">
             <div id="teams-models">
                 <div class="team" id="RED">
-                    <span>Rouges</span>
-                    <span class="score"></span>
+                    <div class="score"></div>
                     <div class="clients"></div>
                 </div>
                 <div class="team" id="BLUE">
-                    <span>Bleus</span>
-                    <span class="score"></span>
+                    <div class="score"></div>
                     <div class="clients"></div>
                 </div>
             </div>

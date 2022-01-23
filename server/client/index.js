@@ -101,14 +101,17 @@ function wsConnection() {
 
             var divName = document.querySelector('#header');
             if (message.teamName === 'BLUE') {
+                divName.classList.remove('noTeam');
                 divName.classList.remove('teamRed');
                 divName.classList.add('teamBlue');
             } else if (message.teamName === 'RED') {
+                divName.classList.remove('noTeam');
                 divName.classList.remove('teamBlue');
                 divName.classList.add('teamRed');
             } else {
                 divName.classList.remove('teamBlue');
                 divName.classList.remove('teamRed');
+                divName.classList.add('noTeam');
             }
 
         } else if (message.type === 'SET_CLIENT_PICTURE') {     
