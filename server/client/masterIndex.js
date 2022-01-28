@@ -288,12 +288,12 @@ start = () => {
         if (countdownDiv === undefined || countdownDiv === null) {
             const modelsDiv = document.getElementById('models');
             modelsDiv.insertAdjacentHTML('beforeend', `
-                <div id='countdown'></span>
+                <div id='countdown'></div>
             `);
         }
     
         countdownDiv = document.getElementById('countdown');
-        countdownDiv.innerText = countdown;
+        countdownDiv.innerHTML = `<img src="assets/trafficLightWait${countdown}.png">`
     
         const levelElt = document.getElementById('level');
         if (levelElt !== null) {
