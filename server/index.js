@@ -112,7 +112,7 @@ wsConnection = (ws, req) => {
             });
             // clear all timeout
             stopwatchs.forEach((stopwatch)=>{
-                clearTimeout(teamStopwatch.timeout);
+                clearTimeout(stopwatch.timeout);
             });
             stopwatchs.clear();
         } else if (message.type === 'MASTER_REQUEST_RESET_GAME') {
