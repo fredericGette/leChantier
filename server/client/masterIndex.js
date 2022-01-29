@@ -91,7 +91,9 @@ updateStep = (newStep) => {
     } else if (newStep.id === 'WAITING_COUNTDOWN_2') {
         displayWaitingCountdown(newStep.level, 2);    
     } else if (newStep.id === 'WAITING_COUNTDOWN_1') {
-        displayWaitingCountdown(newStep.level, 1);       
+        displayWaitingCountdown(newStep.level, 1);   
+    } else if (newStep.id === 'WAITING_COUNTDOWN_0') {
+        displayWaitingCountdown(newStep.level, 0);     
     } else if (newStep.id === 'START_LEVEL') {
         displayLevel(newStep.level);
     } else if (newStep.id === 'TEAM_WIN') {
@@ -304,7 +306,12 @@ displayWaitingCountdown = (level, countdown) => {
     }
 
     countdownDiv = document.getElementById('countdown');
-    countdownDiv.innerHTML = `<img src="assets/trafficLightWait${countdown}.png">`
+    if (countdown > 0) {
+        countdownDiv.innerHTML = `<img src="assets/trafficLightWait${countdown}.png">`;
+    } else {
+        countdownDiv.innerHTML = `<img src="assets/trafficLightGreen.png">`;
+    }
+    
 
     const levelElt = document.getElementById('level');
     if (levelElt !== null) {

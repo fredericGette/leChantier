@@ -517,8 +517,13 @@ waitingReady = (callback) => {
                     notifyMasterStep(step);
 
                     setTimeout(()=>{
-                        step.id = 'START_LEVEL';
+                        step.id = 'WAITING_COUNTDOWN_0';
                         notifyMasterStep(step);
+    
+                        setTimeout(()=>{
+                            step.id = 'START_LEVEL';
+                            notifyMasterStep(step);
+                        }, 500);
                     }, 1000);
                 }, 1000);
             }, 1000);
