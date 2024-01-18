@@ -15,15 +15,15 @@ const portHttp = 80;
 app.use(express.static('client'));
 
 const fs = require('fs');
-const key = fs.readFileSync('./game.home.key');
-const cert = fs.readFileSync('./game.home.crt');
+//const key = fs.readFileSync('./game.home.key');
+//const cert = fs.readFileSync('./game.home.crt');
 
-const https = require('https');
-const serverHttps = https.createServer({key: key, cert: cert }, app);
+//const https = require('https');
+//const serverHttps = https.createServer({key: key, cert: cert }, app);
  
-serverHttps.listen(portHttps, () => {
-    console.log(`WebServer listening at https://game.home:${portHttps}`);
-});
+//serverHttps.listen(portHttps, () => {
+//    console.log(`WebServer listening at https://game.home:${portHttps}`);
+//});
 app.listen(portHttp, () => {
     console.log(`WebServer listening at http://game.home:${portHttp}`)
 });
@@ -34,15 +34,15 @@ const WebSocket = require('ws');
 const { setMaxListeners } = require('process');
 const portWss = 8080;
 const portWs = 8081;
-const serverWss = https.createServer({key: key, cert: cert }, app);
-const wsServer1 = new WebSocket.Server({ server: serverWss });
-serverWss.listen(portWss);
+//const serverWss = https.createServer({key: key, cert: cert }, app);
+//const wsServer1 = new WebSocket.Server({ server: serverWss });
+//serverWss.listen(portWss);
 
 const wsServer2 = new WebSocket.Server({ port: portWs });
 
-wsServer1.on('connection', (ws, req)=>{
-    wsConnection(ws, req);
-});
+//wsServer1.on('connection', (ws, req)=>{
+//    wsConnection(ws, req);
+//});
 wsServer2.on('connection', (ws, req)=>{
     wsConnection(ws, req);
 });
@@ -55,6 +55,7 @@ let step = undefined;
 const names = ['Anatole','Berthe','Célestine','Désiré','Eugène','Ferdinand','Gaston','Henri','Irma','John','Kléber','Ludwig','Marcel','Napoléon','Oscar','Peter','Quincy','Romeo','Suzanne','Thérèse','Ursule','Voldemort','Washington','Xena','Yvonne','Zacharias'];
 const teams = new Map();
 const stopwatchs = new Map();
+let levelId = 1;
 
 // Restore all persisted data
 db.clients.find({}, (err, docs) => {
@@ -74,6 +75,9 @@ db.teams.find({}, (err, docs) => {
 db.step.find({}, (err, docs) => {
     if (docs.length > 0) {
         step = docs[docs.length-1];
+		if (step.level) {
+			levelId = step.level.id;
+		}
     }
 });
 
@@ -101,7 +105,7 @@ wsConnection = (ws, req) => {
             notifyClientTeam(client);
 
         } else if (message.type === 'MASTER_REQUEST_START_GAME') {
-            startLevel(1);
+            startLevel(levelId);
         } else if (message.type === 'MASTER_REQUEST_ABANDON_GAME') {
             initialStep();
             notifyMasterStep(step);
@@ -123,6 +127,7 @@ wsConnection = (ws, req) => {
             clientWSs.clear();
             clientIDWSs.clear();
             db.clients.remove({}, { multi: true });
+			levelId = 1;
         } else if (message.type === 'CONNECTION') {
             if (message.clientId==='UNKNOWN') {
                 // First connexion ever
@@ -166,7 +171,7 @@ wsConnection = (ws, req) => {
     });
 }
 
-console.log(`WebSocketServer1 listening at wss://game.home:${portWss}`);
+//console.log(`WebSocketServer1 listening at wss://game.home:${portWss}`);
 console.log(`WebSocketServer2 listening at ws://game.home:${portWs}`);
 
 // --------------------------------
@@ -177,6 +182,7 @@ initialStep = () => {
         level: undefined
     };
     db.step.update({},step,{upsert :true});
+	levelId = 1;
 }
 if (step === undefined) {
     initialStep();
@@ -414,7 +420,10 @@ updateOrientation = (client, orientation) => {
                             db.teams.update({name:team.name},{$set: { score: team.score }});
                             notifyMasterTeam('SCORE_TEAM', team);
                     
-                            waitingReady(()=>{startLevel(step.level.id+1);});
+                            waitingReady(()=>{
+								levelId++;
+								startLevel(levelId);
+							});
                         }
                     },1000);
                     teamStopwatch = {
@@ -548,7 +557,22 @@ startLevel = (levelId) => {
             break;     
         case 5:
             startLevel5();
-            break;                              
+            break;   
+		case 6:
+            startLevel6();
+            break;	
+        case 7:
+            startLevel7();
+            break;
+        case 8:
+            startLevel8();
+            break;	
+        case 9:
+            startLevel9();
+            break;
+        case 10:
+            startLevel10();
+            break; 			
         default:
             finish();
     }
@@ -562,7 +586,7 @@ startLevel1 = () => {
     const picture = availablePictures[Math.floor(Math.random() * availablePictures.length)];
 
     step.level = {
-        id: 1,
+        id: levelId,
         pictures: Array(nbPictures).fill(picture)
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
@@ -590,7 +614,7 @@ startLevel2 = () => {
     pictures[Math.floor(Math.random() * pictures.length)]=picture02;
 
     step.level = {
-        id: 2,
+        id: levelId,
         pictures: pictures
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
@@ -640,7 +664,7 @@ startLevel3 = () => {
     });
 
     step.level = {
-        id: 3,
+        id: levelId,
         pictures: pictures
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
@@ -678,7 +702,7 @@ startLevel4 = () => {
     pictures[Math.floor(Math.random() * pictures.length)] = 'image01'+orientation2;
 
     step.level = {
-        id: 4,
+        id: levelId,
         pictures: pictures
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
@@ -715,7 +739,190 @@ startLevel5 = () => {
     }
 
     step.level = {
-        id: 5,
+        id: levelId,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
+};
+
+startLevel6 = () => {
+    step.id = 'WAITING_READY';
+
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures = ['image01_TOP_UP_RIGHT_DOWN.png','image01_TOP_UP_RIGHT_UP.png','image01_TOP_DOWN.png'];
+    const picture = availablePictures[Math.floor(Math.random() * availablePictures.length)];
+
+    step.level = {
+        id: levelId,
+        pictures: Array(nbPictures).fill(picture)
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    clientIDs.forEach((client)=>{
+        client.picture='image01.png';
+        client.pictureRotated = getPictureRotated(client);
+        client.pictureMatch=false;
+        notifyClientPicture(client);
+        notifyMasterClient('CLIENT_ORIENTATION', client);
+    });
+
+    notifyMasterStep(step);
+
+    waitingReady();
+};
+
+startLevel7 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures01 = ['image01_TOP_UP_RIGHT_DOWN.png','image01_TOP_UP_RIGHT_UP.png','image01_TOP_DOWN_RIGHT_DOWN.png','image01_TOP_DOWN_RIGHT_UP.png'];
+    const picture01 = availablePictures01[Math.floor(Math.random() * availablePictures01.length)];
+    const availablePictures02 = ['image02_TOP_DOWN_RIGHT_UP.png','image02_TOP_UP_RIGHT_UP.png','image02_TOP_DOWN.png'];
+    const picture02 = availablePictures02[Math.floor(Math.random() * availablePictures02.length)];
+    const pictures = Array(nbPictures).fill(picture01);
+    pictures[Math.floor(Math.random() * pictures.length)]=picture02;
+
+    step.level = {
+        id: levelId,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
+};
+
+startLevel8 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+    const availablePictures = [];
+    for (let i=1; i<=nbPictures; i++) {
+        availablePictures.push('image'+(i).toLocaleString(undefined, {minimumIntegerDigits: 2}));
+    }
+
+    // Shuffle pictures
+    // https://stackoverflow.com/a/2450976
+    let currentIndex = availablePictures.length,  randomIndex;
+    // While there remain elements to shuffle...
+    while (currentIndex != 0) {
+        // Pick a remaining element...
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        // And swap it with the current element.
+        [availablePictures[currentIndex], availablePictures[randomIndex]] = [
+            availablePictures[randomIndex], availablePictures[currentIndex]];
+    }
+
+    const orientations = ['_RIGHT_DOWN.png','_RIGHT_UP.png','_TOP_DOWN.png','_TOP_DOWN_RIGHT_DOWN.png','_TOP_DOWN_RIGHT_UP.png','_TOP_UP_RIGHT_DOWN.png','_TOP_UP_RIGHT_UP.png'];
+    const pictures = [];
+    availablePictures.forEach((picture)=>{
+        const orientation = orientations[Math.floor(Math.random() * orientations.length)];
+        pictures.push(picture+orientation);
+    });
+
+    step.level = {
+        id: levelId,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
+};
+
+startLevel9 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+
+    const availableOrientations = ['_RIGHT_DOWN.png','_RIGHT_UP.png','_TOP_DOWN.png','_TOP_DOWN_RIGHT_DOWN.png','_TOP_DOWN_RIGHT_UP.png','_TOP_UP_RIGHT_DOWN.png','_TOP_UP_RIGHT_UP.png'];
+    const orientation1 = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
+    availableOrientations.splice(availableOrientations.indexOf(orientation1), 1);
+
+    const pictures = [];
+    for (let i=0; i<nbPictures; i++) {
+        pictures.push('image03'+orientation1);
+    }
+
+    const orientation2 = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
+    pictures[Math.floor(Math.random() * pictures.length)] = 'image03'+orientation2;
+
+    step.level = {
+        id: levelId,
+        pictures: pictures
+    };
+    db.step.update({},{$set: { id: step.id, level: step.level }});
+
+    teams.forEach((team)=>{
+        let pictureIdx = 0;
+        clientIDs.forEach((client)=>{
+            if (client.teamName === team.name) {
+                const picture = pictures[pictureIdx];
+                client.picture = picture.substring(0,7)+picture.substring(picture.indexOf('.'));
+                client.pictureRotated = getPictureRotated(client);
+                client.pictureMatch=false;
+                notifyClientPicture(client);
+                notifyMasterClient('CLIENT_ORIENTATION', client);
+
+                if (pictureIdx<pictures.length) pictureIdx++;
+            }
+        });
+    });
+};
+
+startLevel10 = () => {
+    const nbPictures = Math.ceil(clientIDs.size/2);
+
+    let availableOrientations = []; 
+    const pictures = [];
+    for (let i=0; i<nbPictures; i++) {
+        if (availableOrientations.length === 0) {
+            availableOrientations = ['_RIGHT_DOWN.png','_RIGHT_UP.png','_TOP_DOWN.png','_TOP_DOWN_RIGHT_DOWN.png','_TOP_DOWN_RIGHT_UP.png','_TOP_UP_RIGHT_DOWN.png','_TOP_UP_RIGHT_UP.png'];
+        }
+        const orientation = availableOrientations[Math.floor(Math.random() * availableOrientations.length)];
+        availableOrientations.splice(availableOrientations.indexOf(orientation), 1);
+        pictures.push('image02'+orientation);
+    }
+
+    step.level = {
+        id: levelId,
         pictures: pictures
     };
     db.step.update({},{$set: { id: step.id, level: step.level }});
